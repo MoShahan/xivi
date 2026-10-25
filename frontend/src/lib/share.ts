@@ -1,4 +1,9 @@
+import { graphemeLength, truncateGraphemes } from "@/lib/postLimits"
+
 /** Client-side share helpers for the single-post page (`/post/[postId]`). No SDKs / API keys. */
+
+const SHARE_TEXT_MAX = 120
+const SHARE_TEXT_CUT = 117
 
 export function getPostPagePath(postId: string): string {
   return `/post/${encodeURIComponent(postId)}`
@@ -15,8 +20,8 @@ export function getPostPageUrl(postId: string, origin?: string): string {
 export function buildShareText(description?: string): string {
   const trimmed = (description || "").trim().replace(/\s+/g, " ")
   if (!trimmed) return "Check out this post on Xivi"
-  if (trimmed.length <= 120) return trimmed
-  return `${trimmed.slice(0, 117)}…`
+  if (graphemeLength(trimmed) <= SHARE_TEXT_MAX) return trimmed
+  return `${truncateGraphemes(trimmed, SHARE_TEXT_CUT)}…`
 }
 
 export type ShareIntentUrls = {
@@ -42,7 +47,8 @@ export function buildShareUrls(
     x: `https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedText}`,
     facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
     linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
-    whatsapp: `https://wa.me/?text=${encodeURIComponent(`${text} ${pageUrl}`)}`,
+    // api.whatsapp.com keeps UTF-8 emoji; wa.me/?text= often shows � on desktop WhatsApp.
+    whatsapp: `https://api.whatsapp.com/send?text=${encodeURIComponent(`${text} ${pageUrl}`)}`,
   }
 }
 
