@@ -44,7 +44,11 @@ export function mediaUrl(src: string | undefined | null): string {
   if (!trimmed) return ""
   // Dashboard folder rename: old post/avatar URLs may still say /mockbook/
   const normalized = trimmed.replace(/\/mockbook\//gi, "/xivi/")
-  if (/^https?:\/\//i.test(normalized) || normalized.startsWith("data:")) {
+  if (
+    /^https?:\/\//i.test(normalized) ||
+    normalized.startsWith("data:") ||
+    normalized.startsWith("blob:")
+  ) {
     return normalized
   }
   return normalized

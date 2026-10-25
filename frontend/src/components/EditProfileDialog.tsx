@@ -110,7 +110,11 @@ function SectionLabel({ children }: { children: ReactNode }) {
   )
 }
 
-const EditProfileDialog = ({ open, onClose, user, onSaved }: EditProfileDialogProps) => {
+const EditProfileForm = ({
+  user,
+  onClose,
+  onSaved,
+}: Omit<EditProfileDialogProps, "open">) => {
   const dispatch = useAppDispatch()
   const { success, error: toastError } = useToast()
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -123,25 +127,8 @@ const EditProfileDialog = ({ open, onClose, user, onSaved }: EditProfileDialogPr
   }, [previewUrl])
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      fullWidth
-      maxWidth="sm"
-      aria-labelledby="edit-profile-title"
-      slotProps={{
-        paper: {
-          sx: {
-            display: "flex",
-            flexDirection: "column",
-            maxHeight: "min(92dvh, 720px)",
-          },
-        },
-      }}
-    >
       <Formik<EditProfileValues>
         initialValues={valuesFromUser(user)}
-        enableReinitialize
         validationSchema={schema}
         onSubmit={async (vals, helpers) => {
           try {
@@ -235,6 +222,7 @@ const EditProfileDialog = ({ open, onClose, user, onSaved }: EditProfileDialogPr
                       }}
                     >
                       <UserImage
+                        key={previewUrl || user.picturePath || "avatar"}
                         image={previewUrl || user.picturePath || ""}
                         name={`${values.firstName} ${values.lastName}`}
                         size="52px"
@@ -286,7 +274,7 @@ const EditProfileDialog = ({ open, onClose, user, onSaved }: EditProfileDialogPr
                         color="text.secondary"
                         sx={{ mt: 0.4, display: "block", lineHeight: 1.35 }}
                       >
-                        {`JPEG, PNG, GIF, or WebP · max ${MAX_IMAGE_LABEL}`}
+                        {`JPEG, PNG, GIF, or WebP · max ${MAX_IMAGE_LABEL}. On a phone, use Camera or Photo Library.`}
                       </Typography>
                     </Box>
                   </Box>
@@ -409,9 +397,29 @@ const EditProfileDialog = ({ open, onClose, user, onSaved }: EditProfileDialogPr
             </DialogActions>
           </form>
         )}
-      </Formik>
-    </Dialog>
+        </Formik>
   )
 }
+
+const EditProfileDialog = ({ open, onClose, user, onSaved }: EditProfileDialogProps) => (
+  <Dialog
+    open={open}
+    onClose={onClose}
+    fullWidth
+    maxWidth="sm"
+    aria-labelledby="edit-profile-title"
+    slotProps={{
+      paper: {
+        sx: {
+          display: "flex",
+          flexDirection: "column",
+          maxHeight: "min(92dvh, 720px)",
+        },
+      },
+    }}
+  >
+    {open ? <EditProfileForm user={user} onClose={onClose} onSaved={onSaved} /> : null}
+  </Dialog>
+)
 
 export default EditProfileDialog

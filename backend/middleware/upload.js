@@ -7,12 +7,18 @@ const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
 const ALLOWED_MIME = new Set(["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"])
 
+/** Empty/generic MIME is common from phone cameras; magic-byte sniff still runs after multer. */
+export function allowsClientImageMime(mime) {
+  const normalized = (mime || "").toLowerCase()
+  if (!normalized || normalized === "application/octet-stream") return true
+  return ALLOWED_MIME.has(normalized)
+}
+
 const multerPicture = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_IMAGE_BYTES },
   fileFilter: (_req, file, cb) => {
-    const mime = (file.mimetype || "").toLowerCase()
-    if (!ALLOWED_MIME.has(mime)) {
+    if (!allowsClientImageMime(file.mimetype)) {
       cb(new Error("Only image uploads are allowed"))
       return
     }
