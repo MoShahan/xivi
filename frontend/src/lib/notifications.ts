@@ -1,4 +1,37 @@
-import type { AppNotification } from "@/types/notifications"
+import type { AppNotification, NotificationType } from "@/types/notifications"
+
+export type NotificationTypeKind = "like" | "comment" | "friend_request" | "friend"
+
+export function notificationTypeKind(type: NotificationType): NotificationTypeKind {
+  switch (type) {
+    case "post_like":
+    case "comment_like":
+      return "like"
+    case "comment":
+      return "comment"
+    case "friend_request":
+      return "friend_request"
+    case "friend":
+    case "friend_accept":
+      return "friend"
+  }
+}
+
+export function notificationTypeLabel(type: NotificationType): string {
+  switch (type) {
+    case "post_like":
+      return "Post like"
+    case "comment_like":
+      return "Comment like"
+    case "comment":
+      return "Comment"
+    case "friend_request":
+      return "Friend request"
+    case "friend":
+    case "friend_accept":
+      return "Friend"
+  }
+}
 
 export function notificationCopy(n: AppNotification): string {
   const name = `${n.actor?.firstName || ""} ${n.actor?.lastName || ""}`.trim() || "Someone"

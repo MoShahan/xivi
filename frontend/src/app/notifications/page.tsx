@@ -17,7 +17,7 @@ import {
 import { useRouter } from "next/navigation"
 
 import AppShell from "@/components/AppShell"
-import UserImage from "@/components/UserImage"
+import NotificationActorAvatar from "@/components/NotificationActorAvatar"
 import { api } from "@/lib/api"
 import { notificationCopy, notificationHref } from "@/lib/notifications"
 import { sameUserId } from "@/types/models"
@@ -202,10 +202,11 @@ const NotificationsPage = () => {
                     }),
                   }}
                 >
-                  <ListItemAvatar sx={{ minWidth: 56, mt: 0.5 }}>
-                    <UserImage
+                  <ListItemAvatar sx={{ minWidth: 60, mt: 0.5, overflow: "visible" }}>
+                    <NotificationActorAvatar
                       image={n.actor?.picturePath || ""}
                       name={actorName}
+                      type={n.type}
                       size="48px"
                       bgColor={n.actor?.avatarColor}
                     />

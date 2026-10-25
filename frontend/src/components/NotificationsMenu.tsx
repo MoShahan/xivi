@@ -20,7 +20,7 @@ import {
 } from "@mui/material"
 import { useRouter } from "next/navigation"
 
-import UserImage from "@/components/UserImage"
+import NotificationActorAvatar from "@/components/NotificationActorAvatar"
 import { api } from "@/lib/api"
 import { notificationCopy, notificationHref } from "@/lib/notifications"
 import { sameUserId } from "@/types/models"
@@ -170,10 +170,11 @@ const NotificationsMenu = () => {
                     }),
                   }}
                 >
-                  <ListItemAvatar sx={{ minWidth: 48, mt: 0.25 }}>
-                    <UserImage
+                  <ListItemAvatar sx={{ minWidth: 52, mt: 0.25, overflow: "visible" }}>
+                    <NotificationActorAvatar
                       image={n.actor?.picturePath || ""}
                       name={actorName}
+                      type={n.type}
                       size="40px"
                       bgColor={n.actor?.avatarColor}
                     />
