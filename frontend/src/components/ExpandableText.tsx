@@ -13,7 +13,8 @@ type ExpandableTextProps = {
   buttonSx?: SxProps<Theme>
 }
 
-function truncateText(
+/** Trim ends only. Internal newlines stay so posts can keep paragraph breaks. */
+export function truncateText(
   text: string,
   maxWords: number,
   maxChars: number
@@ -30,8 +31,17 @@ function truncateText(
   }
 
   if (needsWordExpand) {
+    const wordRe = /\S+/g
+    let match: RegExpExecArray | null = null
+    let count = 0
+    let end = 0
+    while ((match = wordRe.exec(trimmed)) !== null) {
+      count += 1
+      end = match.index + match[0].length
+      if (count >= maxWords) break
+    }
     return {
-      preview: `${words.slice(0, maxWords).join(" ")}…`,
+      preview: `${trimmed.slice(0, end)}…`,
       needsExpand: true,
     }
   }
@@ -61,6 +71,7 @@ const ExpandableText = ({
         sx={{
           overflowWrap: "anywhere",
           wordBreak: "break-word",
+          whiteSpace: "pre-wrap",
           ...((typographySx || {}) as object),
         }}
       >
