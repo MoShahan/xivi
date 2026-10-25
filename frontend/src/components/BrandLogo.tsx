@@ -38,12 +38,6 @@ const BrandLogo = ({ onClick, size = "nav" }: BrandLogoProps) => {
           ? { color: theme.palette.mode === "dark" ? pLight : theme.palette.primary.dark }
           : undefined,
         "&:hover .xivi-mark": onClick ? { transform: "scale(1.04)" } : undefined,
-        "&:focus-visible": onClick
-          ? {
-              outline: `2px solid ${primary}`,
-              outlineOffset: 3,
-            }
-          : undefined,
       }}
     >
       <Box

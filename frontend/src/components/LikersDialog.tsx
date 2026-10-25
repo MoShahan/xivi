@@ -10,6 +10,7 @@ import {
   Dialog,
   DialogContent,
   IconButton,
+  ListItemButton,
   Typography,
   useTheme,
 } from "@mui/material"
@@ -205,48 +206,14 @@ const LikersList = ({ fetchPath, pageSize, onSelectUser }: LikersListProps) => {
       )}
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-        {likers.map((liker, index) => {
+        {likers.map(liker => {
           const name = [liker.firstName, liker.lastName].filter(Boolean).join(" ").trim() || "User"
           return (
-            <Box
+            <ListItemButton
               key={liker._id}
-              component="button"
-              type="button"
               aria-label={name}
               onClick={() => onSelectUser(liker._id)}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1.25,
-                width: "100%",
-                textAlign: "left",
-                border: `1px solid transparent`,
-                borderRadius: 1,
-                px: 1.1,
-                py: 0.85,
-                cursor: "pointer",
-                font: "inherit",
-                color: "inherit",
-                bgcolor: "transparent",
-                transition: "background-color 0.15s ease, border-color 0.15s ease, transform 0.12s ease",
-                "@keyframes likerEnter": {
-                  from: { opacity: 0, transform: "translateY(4px)" },
-                  to: { opacity: 1, transform: "translateY(0)" },
-                },
-                animation: "likerEnter 0.28s ease both",
-                animationDelay: `${Math.min(index, 8) * 30}ms`,
-                "&:hover": {
-                  bgcolor: alpha(primary, isDark ? 0.1 : 0.06),
-                  borderColor: alpha(primary, isDark ? 0.22 : 0.14),
-                },
-                "&:focus-visible": {
-                  outline: `2px solid ${primary}`,
-                  outlineOffset: 2,
-                },
-                "&:active": {
-                  transform: "scale(0.99)",
-                },
-              }}
+              sx={{ gap: 1.25, borderRadius: 1, px: 1.1, py: 0.85 }}
             >
               <Box
                 sx={{
@@ -277,7 +244,7 @@ const LikersList = ({ fetchPath, pageSize, onSelectUser }: LikersListProps) => {
                   {name}
                 </Typography>
               </Box>
-            </Box>
+            </ListItemButton>
           )
         })}
       </Box>

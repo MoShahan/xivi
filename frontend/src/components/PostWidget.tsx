@@ -819,10 +819,6 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
                         mt: 0.1,
                         cursor: comment.userId ? "pointer" : "default",
                         borderRadius: "50%",
-                        "&:focus-visible": {
-                          outline: `2px solid ${primary}`,
-                          outlineOffset: 2,
-                        },
                       }}
                     >
                       <UserImage
@@ -866,10 +862,6 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
                             transition: "color 0.15s ease",
                             "&:hover": {
                               color: comment.userId ? primary : theme.palette.neutral.dark,
-                            },
-                            "&:focus-visible": {
-                              outline: `2px solid ${primary}`,
-                              outlineOffset: 2,
                             },
                           }}
                         >
@@ -949,10 +941,6 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
                                   visibility: commentLikesCount > 0 ? "visible" : "hidden",
                                   "&:hover":
                                     commentLikesCount > 0 ? { textDecoration: "underline" } : undefined,
-                                  "&:focus-visible": {
-                                    outline: `2px solid ${primary}`,
-                                    outlineOffset: 2,
-                                  },
                                 }}
                               >
                                 {commentLikesCount || 0}

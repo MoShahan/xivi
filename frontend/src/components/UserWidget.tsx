@@ -45,6 +45,7 @@ import EmptyState from "./EmptyState"
 import FlexBetween from "./FlexBetween"
 import PeopleListModal from "./PeopleListModal"
 import RelationshipActions from "./RelationshipActions"
+import { unstyledButtonSx } from "./sharedSx"
 import { ProfileWidgetSkeleton } from "./skeletons"
 import UserImage from "./UserImage"
 import WidgetWrapper from "./WidgetWrapper"
@@ -225,20 +226,10 @@ const UserWidget = ({ userId, url, isOwnProfile: isOwnProfileProp }: UserWidgetP
   const coverColor = normalizeProfileColor(user.coverColor, DEFAULT_COVER_COLOR)
 
   const statButtonSx = {
-    cursor: "pointer",
-    border: "none",
-    background: "none",
-    p: 0,
-    m: 0,
-    font: "inherit",
-    color: "inherit",
+    ...unstyledButtonSx,
     textAlign: "left" as const,
     borderRadius: 1,
     "&:hover": { color: palette.primary.main },
-    "&:focus-visible": {
-      outline: `2px solid ${palette.primary.main}`,
-      outlineOffset: 2,
-    },
   }
 
   const activeSocials = SOCIAL_NETWORKS.filter(({ key }) => Boolean((user[key] || "").trim())).map(
@@ -353,10 +344,6 @@ const UserWidget = ({ userId, url, isOwnProfile: isOwnProfileProp }: UserWidgetP
               position: "relative",
               zIndex: 1,
               flexShrink: 0,
-              "&:focus-visible": {
-                outline: `2px solid ${palette.primary.main}`,
-                outlineOffset: 2,
-              },
             }}
           >
             <UserImage

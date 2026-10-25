@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react"
 import { Notifications } from "@mui/icons-material"
 import {
-  alpha,
   Badge,
   Box,
   Button,
@@ -21,6 +20,7 @@ import {
 import { useRouter } from "next/navigation"
 
 import NotificationActorAvatar from "@/components/NotificationActorAvatar"
+import { notificationRowSx } from "@/components/sharedSx"
 import { api } from "@/lib/api"
 import { notificationCopy, notificationHref } from "@/lib/notifications"
 import { sameUserId } from "@/types/models"
@@ -146,29 +146,7 @@ const NotificationsMenu = () => {
                 <ListItemButton
                   key={n._id}
                   onClick={() => void handleClickItem(n)}
-                  sx={{
-                    position: "relative",
-                    bgcolor: n.read
-                      ? undefined
-                      : alpha(
-                          theme.palette.primary.main,
-                          theme.palette.mode === "dark" ? 0.12 : 0.07
-                        ),
-                    alignItems: "flex-start",
-                    gap: 0.5,
-                    ...(!n.read && {
-                      "&::before": {
-                        content: '""',
-                        position: "absolute",
-                        left: 0,
-                        top: 8,
-                        bottom: 8,
-                        width: 3,
-                        borderRadius: "0 2px 2px 0",
-                        bgcolor: "primary.main",
-                      },
-                    }),
-                  }}
+                  sx={notificationRowSx(n.read, "menu")}
                 >
                   <ListItemAvatar sx={{ minWidth: 52, mt: 0.25, overflow: "visible" }}>
                     <NotificationActorAvatar

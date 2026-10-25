@@ -52,6 +52,7 @@ import BrandLogo from "./BrandLogo"
 import FlexBetween from "./FlexBetween"
 import NotificationsMenu from "./NotificationsMenu"
 import PageShell from "./PageShell"
+import { navListItemSelectedSx, navListItemSx } from "./sharedSx"
 import UserImage from "./UserImage"
 
 export const APP_SHELL_SIDEBAR_WIDTH = 256
@@ -239,16 +240,7 @@ const AppShell = ({ children, narrow = false }: AppShellProps) => {
             data-tour={item.tour}
             selected={selected}
             onClick={() => navigate(item.href)}
-            sx={{
-              borderRadius: 2,
-              mb: 0.25,
-              "&.Mui-selected": {
-                bgcolor: alpha(theme.palette.primary.main, isDark ? 0.18 : 0.1),
-                "&:hover": {
-                  bgcolor: alpha(theme.palette.primary.main, isDark ? 0.24 : 0.14),
-                },
-              },
-            }}
+            sx={navListItemSelectedSx(isDark)}
           >
             <ListItemIcon sx={{ minWidth: 40, color: selected ? "primary.main" : undefined }}>
               {item.badge ? (
@@ -283,7 +275,7 @@ const AppShell = ({ children, narrow = false }: AppShellProps) => {
         data-tour="nav-settings"
         selected={pathname === "/settings" || pathname.startsWith("/settings/")}
         onClick={() => navigate("/settings")}
-        sx={{ borderRadius: 2, mb: 0.25 }}
+        sx={navListItemSx}
       >
         <ListItemIcon sx={{ minWidth: 40 }}>
           <SettingsOutlined />
@@ -293,20 +285,20 @@ const AppShell = ({ children, narrow = false }: AppShellProps) => {
       <ListItemButton
         selected={pathname === "/coming-soon" || pathname.startsWith("/coming-soon/")}
         onClick={() => navigate("/coming-soon")}
-        sx={{ borderRadius: 2, mb: 0.25 }}
+        sx={navListItemSx}
       >
         <ListItemIcon sx={{ minWidth: 40 }}>
           <Upcoming />
         </ListItemIcon>
         <ListItemText primary="Coming soon" />
       </ListItemButton>
-      <ListItemButton onClick={() => navigate("/help")} sx={{ borderRadius: 2, mb: 0.25 }}>
+      <ListItemButton onClick={() => navigate("/help")} sx={navListItemSx}>
         <ListItemIcon sx={{ minWidth: 40 }}>
           <Help />
         </ListItemIcon>
         <ListItemText primary="Help & FAQ" />
       </ListItemButton>
-      <ListItemButton onClick={handleShowTutorial} sx={{ borderRadius: 2, mb: 0.25 }}>
+      <ListItemButton onClick={handleShowTutorial} sx={navListItemSx}>
         <ListItemIcon sx={{ minWidth: 40 }}>
           <TourOutlined />
         </ListItemIcon>
@@ -314,7 +306,7 @@ const AppShell = ({ children, narrow = false }: AppShellProps) => {
       </ListItemButton>
       <ListItemButton
         onClick={() => dispatch(toggleMode())}
-        sx={{ borderRadius: 2, mb: 0.25 }}
+        sx={navListItemSx}
         aria-label="Toggle theme"
       >
         <ListItemIcon sx={{ minWidth: 40 }}>
@@ -327,41 +319,13 @@ const AppShell = ({ children, narrow = false }: AppShellProps) => {
 
   const renderAccountBlock = () => (
     <Box sx={{ px: 1.5, py: 1.5 }}>
-      <Box
-        component="button"
-        type="button"
+      <ListItemButton
         data-tour="nav-profile"
+        selected={profileActive}
         onClick={() => navigate("/profile")}
         aria-label={`Open your profile (${fullName})`}
         aria-current={profileActive ? "page" : undefined}
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 1.25,
-          width: "100%",
-          minWidth: 0,
-          border: 0,
-          borderRadius: 2,
-          px: 1,
-          py: 0.85,
-          mb: 1,
-          cursor: "pointer",
-          textAlign: "left",
-          bgcolor: profileActive
-            ? alpha(theme.palette.primary.main, isDark ? 0.18 : 0.1)
-            : "transparent",
-          color: "inherit",
-          transition: "background-color 0.15s ease",
-          "&:hover": {
-            bgcolor: profileActive
-              ? alpha(theme.palette.primary.main, isDark ? 0.24 : 0.14)
-              : alpha(theme.palette.primary.main, isDark ? 0.1 : 0.06),
-          },
-          "&:focus-visible": {
-            outline: `2px solid ${theme.palette.primary.main}`,
-            outlineOffset: 2,
-          },
-        }}
+        sx={{ ...navListItemSelectedSx(isDark), px: 1, py: 0.85, mb: 1, gap: 1.25 }}
       >
         <UserImage
           image={user?.picturePath || ""}
@@ -385,7 +349,7 @@ const AppShell = ({ children, narrow = false }: AppShellProps) => {
             View profile
           </Typography>
         </Box>
-      </Box>
+      </ListItemButton>
       <Button
         fullWidth
         onClick={handleLogout}

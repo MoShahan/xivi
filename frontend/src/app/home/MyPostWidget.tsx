@@ -18,6 +18,7 @@ import * as yup from "yup"
 
 import EmojiPickerButton, { insertEmojiAtCursor } from "@/components/EmojiPickerButton"
 import FlexBetween from "@/components/FlexBetween"
+import { unstyledButtonSx } from "@/components/sharedSx"
 import UserImage from "@/components/UserImage"
 import WidgetWrapper from "@/components/WidgetWrapper"
 import { api } from "@/lib/api"
@@ -258,18 +259,11 @@ const MyPostWidget = ({ url }: MyPostWidgetProps) => {
                   onClick={() => router.push("/profile")}
                   aria-label="Open your profile"
                   sx={{
+                    ...unstyledButtonSx,
                     mt: 0.55,
                     flexShrink: 0,
-                    p: 0,
-                    border: 0,
-                    background: "none",
-                    cursor: "pointer",
                     borderRadius: "50%",
                     lineHeight: 0,
-                    "&:focus-visible": {
-                      outline: `2px solid ${palette.primary.main}`,
-                      outlineOffset: 2,
-                    },
                   }}
                 >
                   <UserImage

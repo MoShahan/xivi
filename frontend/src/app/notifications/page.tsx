@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import {
-  alpha,
   Box,
   Button,
   CircularProgress,
@@ -18,6 +17,7 @@ import { useRouter } from "next/navigation"
 
 import AppShell from "@/components/AppShell"
 import NotificationActorAvatar from "@/components/NotificationActorAvatar"
+import { notificationRowSx } from "@/components/sharedSx"
 import { api } from "@/lib/api"
 import { notificationCopy, notificationHref } from "@/lib/notifications"
 import { sameUserId } from "@/types/models"
@@ -176,31 +176,7 @@ const NotificationsPage = () => {
                 <ListItemButton
                   key={n._id}
                   onClick={() => void handleClickItem(n)}
-                  sx={{
-                    position: "relative",
-                    borderRadius: 2,
-                    mb: 0.5,
-                    bgcolor: n.read
-                      ? undefined
-                      : alpha(
-                          theme.palette.primary.main,
-                          theme.palette.mode === "dark" ? 0.12 : 0.07
-                        ),
-                    alignItems: "flex-start",
-                    gap: 1,
-                    ...(!n.read && {
-                      "&::before": {
-                        content: '""',
-                        position: "absolute",
-                        left: 0,
-                        top: 10,
-                        bottom: 10,
-                        width: 3,
-                        borderRadius: "0 2px 2px 0",
-                        bgcolor: "primary.main",
-                      },
-                    }),
-                  }}
+                  sx={notificationRowSx(n.read, "page")}
                 >
                   <ListItemAvatar sx={{ minWidth: 60, mt: 0.5, overflow: "visible" }}>
                     <NotificationActorAvatar

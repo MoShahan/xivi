@@ -63,10 +63,6 @@ const ColorSwatchPicker = ({ label, value, onChange, hint }: ColorSwatchPickerPr
                 flexShrink: 0,
                 transition: "transform 0.15s ease",
                 "&:hover": { transform: "scale(1.08)" },
-                "&:focus-visible": {
-                  outline: theme => `2px solid ${theme.palette.primary.main}`,
-                  outlineOffset: 2,
-                },
               }}
             />
           )

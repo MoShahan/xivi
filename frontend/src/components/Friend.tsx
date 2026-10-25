@@ -10,6 +10,7 @@ import type { UserRelationship } from "@/types/relationships"
 
 import FlexBetween from "./FlexBetween"
 import RelationshipActions from "./RelationshipActions"
+import { unstyledButtonSx } from "./sharedSx"
 import UserImage from "./UserImage"
 
 type FriendProps = {
@@ -93,51 +94,24 @@ const Friend = ({
           : null),
       }}
     >
-      <FlexBetween sx={{ gap: "0.65rem", flex: "1 1 auto", minWidth: 0 }}>
-        <Box
-          onClick={handleGoToProfile}
-          onKeyDown={e => {
-            if (!id) return
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault()
-              handleGoToProfile()
-            }
-          }}
-          role={id ? "link" : undefined}
-          tabIndex={id ? 0 : undefined}
-          sx={{
-            cursor: id ? "pointer" : "default",
-            flexShrink: 0,
-            borderRadius: "50%",
-            "&:focus-visible": {
-              outline: `2px solid ${theme.palette.primary.main}`,
-              outlineOffset: 2,
-            },
-          }}
-        >
-          <UserImage image={url} name={name} size={avatarSize} bgColor={avatarColor} />
-        </Box>
-        <Box
-          onClick={handleGoToProfile}
-          onKeyDown={e => {
-            if (!id) return
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault()
-              handleGoToProfile()
-            }
-          }}
-          role={id ? "link" : undefined}
-          tabIndex={id ? 0 : undefined}
-          sx={{
-            minWidth: 0,
-            flex: "1 1 auto",
-            borderRadius: 1,
-            "&:focus-visible": {
-              outline: `2px solid ${theme.palette.primary.main}`,
-              outlineOffset: 2,
-            },
-          }}
-        >
+      <Box
+        component={id ? "button" : "div"}
+        type={id ? "button" : undefined}
+        onClick={id ? handleGoToProfile : undefined}
+        aria-label={id ? name : undefined}
+        sx={{
+          ...unstyledButtonSx,
+          display: "flex",
+          alignItems: "center",
+          gap: "0.65rem",
+          flex: "1 1 auto",
+          minWidth: 0,
+          textAlign: "left",
+          cursor: id ? "pointer" : "default",
+        }}
+      >
+        <UserImage image={url} name={name} size={avatarSize} bgColor={avatarColor} />
+        <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
           <Typography
             title={name}
             sx={{
@@ -177,7 +151,7 @@ const Friend = ({
             </Typography>
           ) : null}
         </Box>
-      </FlexBetween>
+      </Box>
       {(showFriendButton && id && !isSelf) || endAction ? (
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.25, flexShrink: 0 }}>
           {showFriendButton && id && !isSelf ? (
