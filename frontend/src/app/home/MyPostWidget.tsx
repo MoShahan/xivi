@@ -12,6 +12,7 @@ import {
   useTheme,
 } from "@mui/material"
 import { Formik, type FormikHelpers } from "formik"
+import { useRouter } from "next/navigation"
 import type { ObjectSchema } from "yup"
 import * as yup from "yup"
 
@@ -150,6 +151,7 @@ const createPostInitVals: CreatePostFormValues = {
 const MyPostWidget = ({ url }: MyPostWidgetProps) => {
   const user = useAppSelector(state => state.user)
   const dispatch = useAppDispatch()
+  const router = useRouter()
   const { palette } = useTheme()
   const medMain = palette.neutral.mediumMain
 
@@ -250,7 +252,26 @@ const MyPostWidget = ({ url }: MyPostWidgetProps) => {
               />
 
               <FlexBetween sx={{ gap: "0.75rem", alignItems: "flex-start" }}>
-                <Box sx={{ mt: 0.55, flexShrink: 0 }}>
+                <Box
+                  component="button"
+                  type="button"
+                  onClick={() => router.push("/profile")}
+                  aria-label="Open your profile"
+                  sx={{
+                    mt: 0.55,
+                    flexShrink: 0,
+                    p: 0,
+                    border: 0,
+                    background: "none",
+                    cursor: "pointer",
+                    borderRadius: "50%",
+                    lineHeight: 0,
+                    "&:focus-visible": {
+                      outline: `2px solid ${palette.primary.main}`,
+                      outlineOffset: 2,
+                    },
+                  }}
+                >
                   <UserImage
                     image={url}
                     name={[user?.firstName, user?.lastName].filter(Boolean).join(" ")}
