@@ -202,6 +202,11 @@ export const themeSettings = (mode: "light" | "dark"): ThemeOptions => {
             outline: `2px solid ${primary.main}`,
             outlineOffset: 2,
           },
+          // MUI outlined fields already draw a notched border; a second ring
+          // sits behind the floating label and looks like a gray halo on mobile.
+          "input:focus-visible, textarea:focus-visible, select:focus-visible": {
+            outline: "none",
+          },
           // Thin overlay scrollbars (dialogs, menus, page) - match stone UI.
           "*::-webkit-scrollbar": {
             width: 8,
@@ -299,9 +304,9 @@ export const themeSettings = (mode: "light" | "dark"): ThemeOptions => {
           root: {
             borderRadius: 10,
             backgroundColor: isDark ? alpha(colorTokens.stone[0], 0.03) : colorTokens.stone[0],
-            transition: "border-color 0.15s ease, box-shadow 0.15s ease",
+            transition: "border-color 0.15s ease",
             "&.Mui-focused": {
-              boxShadow: `0 0 0 3px ${alpha(primary.main, isDark ? 0.28 : 0.18)}`,
+              boxShadow: "none",
             },
           },
         },
