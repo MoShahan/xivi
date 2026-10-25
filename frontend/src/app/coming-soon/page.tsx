@@ -13,6 +13,7 @@ import {
   ImageOutlined,
   MailOutlined,
   NewspaperOutlined,
+  OpenInFull,
   ShieldOutlined,
   StorefrontOutlined,
   SyncOutlined,
@@ -161,6 +162,15 @@ const ITEMS: RoadmapItem[] = [
     title: "Richer posts",
     summary: "Several images on one post, smarter compression, and a soft-delete so a post can leave the feed without a hard wipe.",
     icon: <ImageOutlined />,
+  },
+  {
+    title: "Fullscreen post images",
+    summary: "Tap a photo on a post to open it large - a fullscreen viewer, then close it and return to the feed.",
+    details: [
+      "Today a posted image stays in the card. Clicking it does not zoom.",
+      "Later, click opens a lightbox or fullscreen modal. Escape, backdrop click, or a close control dismisses it.",
+    ],
+    icon: <OpenInFull />,
   },
   {
     title: "Messaging and DMs",
