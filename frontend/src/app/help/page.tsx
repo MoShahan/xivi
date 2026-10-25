@@ -12,12 +12,26 @@ import {
 } from "@mui/material"
 import NextLink from "next/link"
 
+import { useAppSelector } from "@/app/hooks"
 import InfoPageShell from "@/components/InfoPageShell"
 
-const FAQS: { q: string; a: ReactNode }[] = [
+function faqs(isSignedIn: boolean): { q: string; a: ReactNode }[] {
+  return [
   {
     q: "How do I create an account?",
-    a: (
+    a: isSignedIn ? (
+      <>
+        You already have an account and are signed in. Open your{" "}
+        <MuiLink component={NextLink} href="/profile">
+          profile
+        </MuiLink>{" "}
+        to manage it, or go to{" "}
+        <MuiLink component={NextLink} href="/home">
+          Home
+        </MuiLink>{" "}
+        to use the feed. Sign out first if you need to create a different account.
+      </>
+    ) : (
       <>
         Open <MuiLink component={NextLink} href="/register">Create account</MuiLink>, enter your name,
         email, and password, then submit. You can also sign in with Google, GitHub, or Discord when those
@@ -71,8 +85,12 @@ const FAQS: { q: string; a: ReactNode }[] = [
     ),
   },
 ]
+}
 
 const HelpPage = () => {
+  const isSignedIn = Boolean(useAppSelector(state => state.accessToken))
+  const items = faqs(isSignedIn)
+
   return (
     <InfoPageShell
       title="Help & FAQ"
@@ -91,7 +109,7 @@ const HelpPage = () => {
       </Typography>
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-        {FAQS.map(item => (
+        {items.map(item => (
           <Accordion
             key={item.q}
             disableGutters
