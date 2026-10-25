@@ -212,6 +212,7 @@ const LikersList = ({ fetchPath, pageSize, onSelectUser }: LikersListProps) => {
               key={liker._id}
               component="button"
               type="button"
+              aria-label={name}
               onClick={() => onSelectUser(liker._id)}
               sx={{
                 display: "flex",
@@ -274,9 +275,6 @@ const LikersList = ({ fetchPath, pageSize, onSelectUser }: LikersListProps) => {
                   }}
                 >
                   {name}
-                </Typography>
-                <Typography sx={{ color: medium, fontSize: "0.75rem", mt: 0.15 }}>
-                  View profile
                 </Typography>
               </Box>
             </Box>
