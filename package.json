@@ -20,11 +20,13 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "npm run test -w frontend && npm run test -w backend",
+    "lint:staged": "lint-staged",
     "prepare": "husky || true"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
     "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "prettier": "^3.9.10"
   },
   "overrides": {

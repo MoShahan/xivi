@@ -142,7 +142,7 @@ npm run dev:frontend
 | `npm run typecheck`    | Frontend `tsc --noEmit`     |
 | `npm run prepare`      | Installs Husky git hooks after `npm install` (no-op on Vercel/CI if husky is omitted) |
 
-Husky runs `npm run lint` (frontend + backend) on every **commit**. If lint fails, the commit is blocked. After clone, run `npm install` once so the hook is installed. Production installs omit husky, so `prepare` is written as `husky || true` and does not fail the deploy.
+Husky runs **lint-staged** on every **commit**: ESLint on staged `frontend` / `backend` source files only. If that lint fails, the commit is blocked. After clone, run `npm install` once so the hook is installed. Production installs omit husky, so `prepare` is written as `husky || true` and does not fail the deploy. Full-repo lint still runs in CI (`npm run lint`).
 
 ### Workspace examples
 
