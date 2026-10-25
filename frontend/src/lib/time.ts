@@ -57,3 +57,16 @@ export function formatCompactTime(iso: string | Date | undefined | null): string
     year: date.getFullYear() !== new Date().getFullYear() ? "numeric" : undefined,
   })
 }
+
+/** True when the API sent a real edit timestamp (not likes / comments). */
+export function hasEditedStamp(editedAt?: string | Date | null): boolean {
+  if (editedAt == null || editedAt === "") return false
+  const date = editedAt instanceof Date ? editedAt : new Date(editedAt)
+  return !Number.isNaN(date.getTime())
+}
+
+/** Append a muted “Edited” marker after a time label. */
+export function withEditedLabel(timeLabel: string, editedAt?: string | Date | null): string {
+  if (!hasEditedStamp(editedAt)) return timeLabel
+  return timeLabel ? `${timeLabel} · Edited` : "Edited"
+}

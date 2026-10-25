@@ -356,7 +356,10 @@ export const editComment = async (req, res, next) => {
       return res.status(403).json({ error: "You can only edit your own comments" })
     }
 
-    comment.text = text
+    if (comment.text !== text) {
+      comment.text = text
+      comment.editedAt = new Date()
+    }
     post.markModified("comments")
     await post.save()
 
@@ -483,8 +486,12 @@ export const updatePost = async (req, res, next) => {
       return res.status(400).json({ error: `Post text must be ${POST_DESCRIPTION_MAX} characters or fewer` })
     }
 
+    const contentChanged = (post.description || "") !== description || (post.url || "") !== url
     post.description = description
     post.url = url
+    if (contentChanged) {
+      post.editedAt = new Date()
+    }
     await post.save()
 
     const [formatted] = await withAuthors([post])

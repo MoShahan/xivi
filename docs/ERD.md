@@ -61,6 +61,7 @@ erDiagram
     object comments "embedded[]"
     date createdAt
     date updatedAt
+    date editedAt "text/image edit only"
   }
 
   COMMENT {
@@ -69,6 +70,7 @@ erDiagram
     string text
     map likes "userId -> boolean"
     date createdAt
+    date editedAt "text edit only"
   }
 
   FRIEND_REQUEST {

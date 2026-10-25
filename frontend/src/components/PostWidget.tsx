@@ -56,7 +56,7 @@ import {
   truncateGraphemes,
 } from "@/lib/postLimits"
 import { buildShareText, buildShareUrls, openShareWindow } from "@/lib/share"
-import { formatCompactTime, formatPostTime } from "@/lib/time"
+import { formatCompactTime, formatPostTime, withEditedLabel } from "@/lib/time"
 import { useFeatureFlags } from "@/providers/FeatureFlagsProvider"
 import { useToast } from "@/providers/ToastProvider"
 import { removePost, setPost, setSavedPosts } from "@/state"
@@ -429,7 +429,7 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
       <Friend
         id={post.userId}
         name={authorName}
-        subtitle={formatPostTime(post.createdAt)}
+        subtitle={withEditedLabel(formatPostTime(post.createdAt), post.editedAt)}
         url={post.user?.picturePath || ""}
         avatarColor={post.user?.avatarColor}
         avatarSize="44px"
@@ -885,7 +885,7 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
                               lineHeight: 1.3,
                             }}
                           >
-                            {formatCompactTime(comment.createdAt)}
+                            {withEditedLabel(formatCompactTime(comment.createdAt), comment.editedAt)}
                           </Typography>
                         ) : null}
                         <Box

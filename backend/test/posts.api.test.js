@@ -98,6 +98,51 @@ describe("posts API", () => {
     assert.equal(unsaved.status, 200)
   })
 
+  it("sets editedAt when a post or comment is edited, not when liked", async () => {
+    const create = await request(getApp())
+      .post("/posts")
+      .set(authHeader(token))
+      .send({ description: "Edit me" })
+    assert.equal(create.status, 201)
+    const postId = create.body.post._id
+    assert.equal(create.body.post.editedAt, null)
+
+    const liked = await request(getApp()).patch(`/posts/${postId}/like`).set(authHeader(token))
+    assert.equal(liked.status, 200)
+    assert.equal(liked.body.updatedPost.editedAt, null)
+
+    const edited = await request(getApp())
+      .patch(`/posts/${postId}`)
+      .set(authHeader(token))
+      .send({ description: "Edited copy" })
+    assert.equal(edited.status, 200)
+    assert.ok(edited.body.updatedPost.editedAt)
+
+    const commented = await request(getApp())
+      .post(`/posts/${postId}/comments`)
+      .set(authHeader(token))
+      .send({ text: "First take" })
+    assert.equal(commented.status, 201)
+    const comment = commented.body.updatedPost.comments.at(-1)
+    assert.ok(comment?._id)
+    assert.equal(comment.editedAt, null)
+
+    const commentLiked = await request(getApp())
+      .patch(`/posts/${postId}/comments/${comment._id}/like`)
+      .set(authHeader(token))
+    assert.equal(commentLiked.status, 200)
+    const afterLike = commentLiked.body.updatedPost.comments.find(c => String(c._id) === String(comment._id))
+    assert.equal(afterLike.editedAt, null)
+
+    const commentEdited = await request(getApp())
+      .patch(`/posts/${postId}/comments/${comment._id}`)
+      .set(authHeader(token))
+      .send({ text: "Second take" })
+    assert.equal(commentEdited.status, 200)
+    const afterEdit = commentEdited.body.updatedPost.comments.find(c => String(c._id) === String(comment._id))
+    assert.ok(afterEdit.editedAt)
+  })
+
   it("rejects create post without auth", async () => {
     const res = await request(getApp()).post("/posts").send({ description: "Nope" })
     assert.equal(res.status, 401)

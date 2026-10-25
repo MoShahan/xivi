@@ -93,6 +93,8 @@ export type PostComment = {
   userId: string
   text: string
   createdAt?: string
+  /** Set when the comment text was edited. */
+  editedAt?: string | null
   /** Comment likes keyed by user id (same shape as post likes). */
   likes?: PostLikes
   user?: Pick<User, "firstName" | "lastName" | "picturePath" | "avatarColor"> | null
@@ -107,6 +109,8 @@ export type Post = {
   comments: PostComment[]
   createdAt?: string
   updatedAt?: string
+  /** Set when description or image was edited (not on like / comment). */
+  editedAt?: string | null
   user?: Pick<User, "firstName" | "lastName" | "location" | "picturePath" | "avatarColor"> | null
 }
 

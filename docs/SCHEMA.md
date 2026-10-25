@@ -87,7 +87,7 @@ There is **no** separate `comments` collection.
 ## `posts`
 
 **File:** `backend/models/Post.js`  
-**Timestamps:** `createdAt`, `updatedAt` on the post; comments have `createdAt` only.
+**Timestamps:** `createdAt`, `updatedAt` on the post; comments have `createdAt` only. `editedAt` is set only when the author changes post text/image or comment text.
 
 | Field | Type | Required | Default | Notes |
 | ----- | ---- | -------- | ------- | ----- |
@@ -98,7 +98,8 @@ There is **no** separate `comments` collection.
 | `likes` | Map\<String, Boolean\> | | | Keys = liker user ids |
 | `comments` | Comment[] | | `[]` | Embedded subdocuments |
 | `createdAt` | Date | auto | | |
-| `updatedAt` | Date | auto | | |
+| `updatedAt` | Date | auto | | Touches on like / comment / save of the document |
+| `editedAt` | Date | | `null` | Set when description or image is edited |
 
 ### `comments[]` subdocument
 
@@ -109,6 +110,7 @@ There is **no** separate `comments` collection.
 | `text` | String | yes | | Trimmed |
 | `likes` | Map\<String, Boolean\> | | `{}` | Keys = liker user ids |
 | `createdAt` | Date | auto | | No `updatedAt` on comments |
+| `editedAt` | Date | | `null` | Set when the comment text is edited |
 
 ### Indexes
 

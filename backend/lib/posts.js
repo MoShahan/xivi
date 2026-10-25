@@ -107,6 +107,7 @@ function formatComment(comment, byId) {
       userId: "",
       text: comment,
       createdAt: undefined,
+      editedAt: null,
       likes: {},
       user: null,
     }
@@ -118,6 +119,7 @@ function formatComment(comment, byId) {
     userId: raw.userId ? String(raw.userId) : "",
     text: raw.text || "",
     createdAt: raw.createdAt,
+    editedAt: raw.editedAt || null,
     likes: serializeLikes(raw.likes),
     user: authorSnapshot(byId[String(raw.userId)]),
   }

@@ -34,10 +34,10 @@ Full feature list for the current app, plus planned items for a later release.
 - Save / unsave posts (bookmark on post cards)
 - Own profile tabs: Posts / Saved / Liked / Commented; other profiles show Posts only
 - Comment on posts (optimistic add + list with author; emoji picker on the comment box)
-- Edit / delete **own** comments (⋮ menu; confirm on delete)
+- Edit / delete **own** comments (⋮ menu; confirm on delete); edited comments show a muted **Edited** mark
 - Like / unlike comments (optimistic; heart + count)
 - View who liked a comment (click comment like count → list)
-- Edit **own** posts (⋮ → Edit; text + replace/remove image)
+- Edit **own** posts (⋮ → Edit; text + replace/remove image); edited posts show a muted **Edited** mark next to the time
 - Delete **own** posts (⋮ menu + confirm dialog)
 - Single-post page at `/post/[postId]`
 - Share menu (copy link, X, Facebook, LinkedIn, WhatsApp)
