@@ -265,23 +265,8 @@ const UserWidget = ({ userId, url, isOwnProfile: isOwnProfileProp }: UserWidgetP
             `linear-gradient(180deg, ${alpha(theme.palette.common.black, 0)} 40%, ${alpha(theme.palette.common.black, 0.12)} 100%)`,
         }}
       >
-        <Box sx={{ position: "absolute", top: 8, right: 8, zIndex: 2 }}>
-          {isOwnProfile && canEditProfile ? (
-            <Tooltip title="Edit profile">
-              <IconButton
-                size="small"
-                sx={{
-                  bgcolor: theme => alpha(theme.palette.common.black, 0.28),
-                  color: "common.white",
-                  "&:hover": { bgcolor: theme => alpha(theme.palette.common.black, 0.42) },
-                }}
-                onClick={() => setEditOpen(true)}
-                aria-label="Edit profile"
-              >
-                <ManageAccountsOutlined fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          ) : isOwnProfile ? null : (
+        {isOwnProfile ? null : (
+          <Box sx={{ position: "absolute", top: 8, right: 8, zIndex: 2 }}>
             <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 0.75 }}>
               <RelationshipActions userId={userId} onCover onChanged={refreshProfile} />
               {viewerIsAdmin && user.role !== "admin" ? (
@@ -334,8 +319,8 @@ const UserWidget = ({ userId, url, isOwnProfile: isOwnProfileProp }: UserWidgetP
                 </Button>
               ) : null}
             </Box>
-          )}
-        </Box>
+          </Box>
+        )}
       </Box>
 
       <Box sx={{ px: "1.15rem", pb: "1.15rem", pt: 0, position: "relative", zIndex: 1 }}>
@@ -429,6 +414,23 @@ const UserWidget = ({ userId, url, isOwnProfile: isOwnProfileProp }: UserWidgetP
                 />
               ) : null}
             </Box>
+            {isOwnProfile && canEditProfile ? (
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<ManageAccountsOutlined />}
+                onClick={() => setEditOpen(true)}
+                sx={{
+                  mt: 1,
+                  textTransform: "none",
+                  fontWeight: 700,
+                  borderRadius: 2,
+                  px: 1.5,
+                }}
+              >
+                Edit profile
+              </Button>
+            ) : null}
             <Box
               sx={{
                 display: "flex",
