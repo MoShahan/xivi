@@ -1184,9 +1184,11 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
                   display: "flex",
                   alignItems: "flex-end",
                   gap: 0.5,
-                  px: 1.25,
-                  py: 0.35,
-                  borderRadius: 3,
+                  pl: 1.75,
+                  pr: 0.5,
+                  py: 0.4,
+                  minHeight: 44,
+                  borderRadius: "16px",
                   bgcolor: theme =>
                     theme.palette.mode === "dark"
                       ? alpha(theme.palette.common.white, 0.06)
@@ -1204,7 +1206,7 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
                 <InputBase
                   fullWidth
                   multiline
-                  maxRows={4}
+                  maxRows={6}
                   inputRef={commentInputRef}
                   placeholder="Add a comment…"
                   inputProps={{ "aria-label": "Add a comment", "aria-invalid": Boolean(commentError) }}
@@ -1216,9 +1218,13 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
                   disabled={isSubmittingComment}
                   sx={{
                     flex: 1,
-                    py: 0.65,
+                    minWidth: 0,
+                    py: 0.7,
                     fontSize: "0.9rem",
-                    lineHeight: 1.4,
+                    lineHeight: 1.45,
+                    "& textarea": {
+                      overflow: "auto !important",
+                    },
                   }}
                   onKeyDown={e => {
                     if (e.key === "Enter" && !e.shiftKey) {
@@ -1231,47 +1237,56 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
                     }
                   }}
                 />
-                {canEmoji ? (
-                  <EmojiPickerButton
-                    dense
-                    disabled={isSubmittingComment}
-                    onSelect={emoji =>
-                      insertEmojiAtCursor(
-                        commentInputRef.current,
-                        commentText,
-                        emoji,
-                        next => {
-                          setCommentText(truncateGraphemes(next, COMMENT_MAX))
-                          if (commentError) setCommentError(undefined)
-                        }
-                      )
-                    }
-                  />
-                ) : null}
-                <Tooltip title="Post comment">
-                  <span>
-                    <IconButton
-                      type="submit"
-                      size="small"
-                      disabled={isSubmittingComment || !commentText.trim()}
-                      aria-label="Post comment"
-                      sx={{
-                        mb: 0.15,
-                        color: theme.palette.common.white,
-                        bgcolor: primary,
-                        width: 32,
-                        height: 32,
-                        "&:hover": { bgcolor: theme.palette.primary.dark },
-                        "&.Mui-disabled": {
-                          bgcolor: alpha(primary, 0.35),
-                          color: alpha(theme.palette.common.white, 0.7),
-                        },
-                      }}
-                    >
-                      <SendRounded sx={{ fontSize: "1.05rem" }} />
-                    </IconButton>
-                  </span>
-                </Tooltip>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 0.25,
+                    flexShrink: 0,
+                    pb: 0.2,
+                  }}
+                >
+                  {canEmoji ? (
+                    <EmojiPickerButton
+                      dense
+                      disabled={isSubmittingComment}
+                      onSelect={emoji =>
+                        insertEmojiAtCursor(
+                          commentInputRef.current,
+                          commentText,
+                          emoji,
+                          next => {
+                            setCommentText(truncateGraphemes(next, COMMENT_MAX))
+                            if (commentError) setCommentError(undefined)
+                          }
+                        )
+                      }
+                    />
+                  ) : null}
+                  <Tooltip title="Post comment">
+                    <Box component="span" sx={{ display: "inline-flex" }}>
+                      <IconButton
+                        type="submit"
+                        size="small"
+                        disabled={isSubmittingComment || !commentText.trim()}
+                        aria-label="Post comment"
+                        sx={{
+                          color: theme.palette.common.white,
+                          bgcolor: primary,
+                          width: 32,
+                          height: 32,
+                          "&:hover": { bgcolor: theme.palette.primary.dark },
+                          "&.Mui-disabled": {
+                            bgcolor: alpha(primary, 0.35),
+                            color: alpha(theme.palette.common.white, 0.7),
+                          },
+                        }}
+                      >
+                        <SendRounded sx={{ fontSize: "1.05rem" }} />
+                      </IconButton>
+                    </Box>
+                  </Tooltip>
+                </Box>
               </Box>
               {commentError && (
                 <Typography sx={{ color: "error.main", mt: 0.5, ml: 0.5, fontSize: "0.75rem" }} role="alert">

@@ -206,7 +206,7 @@ const EmojiPickerButton = ({
                   width: 32,
                   height: 32,
                   p: 0,
-                  borderRadius: "8px",
+                  borderRadius: "50%",
                 }
               : {
                   px: showLabel ? 1 : 0.5,
