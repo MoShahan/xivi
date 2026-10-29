@@ -66,6 +66,11 @@ export function mergePendingPosts<T extends IdPost>(pending: T[], incoming: T[])
   })
 }
 
+/** Insert new posts immediately when the viewer is at the top (or the list is empty). */
+export function shouldAutoRevealNewPosts(atTop: boolean, loadedPostCount: number): boolean {
+  return atTop || loadedPostCount === 0
+}
+
 export function liveFeedChipLabel(count: number, hasMore: boolean): string {
   if (hasMore || count > 1) {
     if (hasMore) return "New posts"
@@ -73,6 +78,16 @@ export function liveFeedChipLabel(count: number, hasMore: boolean): string {
   }
   if (count === 1) return "1 new post"
   return "New posts"
+}
+
+/** Scroll the window (and `#main-content` if it scrolls) to the top of the feed. */
+export function scrollFeedToTop(): void {
+  if (typeof window === "undefined") return
+  window.scrollTo({ top: 0, behavior: "smooth" })
+  const main = typeof document !== "undefined" ? document.getElementById("main-content") : null
+  if (main && main.scrollTop > 0) {
+    main.scrollTo({ top: 0, behavior: "smooth" })
+  }
 }
 
 /**

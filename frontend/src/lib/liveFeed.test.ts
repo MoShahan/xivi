@@ -5,6 +5,8 @@ import {
   liveFeedChipLabel,
   mergePendingPosts,
   newestCreatedAt,
+  scrollFeedToTop,
+  shouldAutoRevealNewPosts,
   shouldMergePolledPost,
   splitLiveFeedPage,
   startLiveFeedPoll,
@@ -63,11 +65,37 @@ describe("mergePendingPosts", () => {
   })
 })
 
+describe("shouldAutoRevealNewPosts", () => {
+  it("auto-reveals at the top or when the list is empty", () => {
+    expect(shouldAutoRevealNewPosts(true, 5)).toBe(true)
+    expect(shouldAutoRevealNewPosts(false, 0)).toBe(true)
+    expect(shouldAutoRevealNewPosts(false, 5)).toBe(false)
+  })
+})
+
 describe("liveFeedChipLabel", () => {
   it("uses a generic label when more pages exist", () => {
     expect(liveFeedChipLabel(1, false)).toBe("1 new post")
     expect(liveFeedChipLabel(3, false)).toBe("3 new posts")
     expect(liveFeedChipLabel(10, true)).toBe("New posts")
+  })
+})
+
+describe("scrollFeedToTop", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it("is a no-op without window", () => {
+    scrollFeedToTop()
+  })
+
+  it("scrolls the window to the top", () => {
+    const scrollTo = vi.fn()
+    vi.stubGlobal("window", { scrollTo })
+    vi.stubGlobal("document", { getElementById: () => null })
+    scrollFeedToTop()
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" })
   })
 })
 

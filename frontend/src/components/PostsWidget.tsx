@@ -1,7 +1,9 @@
 "use client"
 
-import React, { useCallback, useEffect, useRef, useState } from "react"
-import { Box, Button, Typography, useTheme } from "@mui/material"
+import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
+import { createPortal } from "react-dom"
+import { KeyboardArrowUp } from "@mui/icons-material"
+import { Box, Button, Typography, useMediaQuery, useTheme } from "@mui/material"
 import { useRouter } from "next/navigation"
 
 import { api } from "@/lib/api"
@@ -10,6 +12,8 @@ import {
   liveFeedChipLabel,
   mergePendingPosts,
   newestCreatedAt,
+  scrollFeedToTop,
+  shouldAutoRevealNewPosts,
   shouldMergePolledPost,
   splitLiveFeedPage,
   startLiveFeedPoll,
@@ -21,6 +25,7 @@ import type { PaginatedPosts, Post } from "@/types/models"
 
 import { useAppDispatch, useAppSelector } from "../app/hooks"
 
+import { APP_SHELL_SIDEBAR_WIDTH, APP_SHELL_TOPBAR_HEIGHT } from "./AppShell"
 import EmptyState from "./EmptyState"
 import PostWidget from "./PostWidget"
 import { PostCardSkeleton, PostsFeedSkeleton } from "./skeletons"
@@ -67,6 +72,47 @@ const EMPTY_COPY: Record<PostsListKind, { title: string; description: string }> 
 }
 
 const PAGE_LIMIT = 10
+const emptySubscribe = () => () => {}
+
+function useIsClient() {
+  return useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  )
+}
+
+function NewPostsFloatButton({ label, onClick }: { label: string; onClick: () => void }) {
+  const theme = useTheme()
+  const isWide = useMediaQuery("(min-width: 1000px)")
+  const isClient = useIsClient()
+  if (!isClient) return null
+
+  return createPortal(
+    <Button
+      size="small"
+      variant="contained"
+      onClick={onClick}
+      startIcon={<KeyboardArrowUp />}
+      aria-live="polite"
+      sx={{
+        position: "fixed",
+        top: APP_SHELL_TOPBAR_HEIGHT + 10,
+        left: isWide ? `calc(50% + ${APP_SHELL_SIDEBAR_WIDTH / 2}px)` : "50%",
+        transform: "translateX(-50%)",
+        zIndex: theme.zIndex.appBar + 1,
+        textTransform: "none",
+        fontWeight: 600,
+        borderRadius: 999,
+        px: 1.75,
+        boxShadow: 3,
+      }}
+    >
+      {label}
+    </Button>,
+    document.body
+  )
+}
 
 function resolveList(list: PostsListKind | undefined, isProfile: boolean): PostsListKind {
   if (list) return list
@@ -125,10 +171,14 @@ const PostsWidget = ({ list, userId = "", isProfile = false, onBrowseEveryone }:
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(false)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
+  const topSentinelRef = useRef<HTMLDivElement | null>(null)
   const loadingMoreRef = useRef(false)
+  const atTopRef = useRef(true)
+  const pendingNewRef = useRef<Post[]>([])
 
   const [pendingNew, setPendingNew] = useState<Post[]>([])
   const [pendingHasMore, setPendingHasMore] = useState(false)
+  const [atTop, setAtTop] = useState(true)
 
   const loadKey = kind === "authored" ? `authored:${userId}` : kind
   const liveEnabled = listSupportsLiveUpdates(kind)
@@ -231,12 +281,23 @@ const PostsWidget = ({ list, userId = "", isProfile = false, onBrowseEveryone }:
         const since = newestCreatedAt(current)
         const currentIds = current.map(post => String(post._id))
 
+        const revealOrQueue = (incoming: Post[], hasMoreFlag: boolean, currentCount: number) => {
+          if (!incoming.length) return
+          if (shouldAutoRevealNewPosts(atTopRef.current, currentCount)) {
+            dispatch(prependPosts({ posts: incoming }))
+            setPendingNew([])
+            setPendingHasMore(false)
+          } else {
+            setPendingNew(prev => mergePendingPosts(prev, incoming))
+            setPendingHasMore(hasMoreFlag)
+          }
+        }
+
         if (since) {
           const { data } = await api.get<PaginatedPosts>(pathForList(kind, userId, { since }))
           if (cancelled) return
           const { pendingNew: incoming } = splitLiveFeedPage(data.posts || [], currentIds)
-          setPendingNew(prev => mergePendingPosts(prev, incoming))
-          setPendingHasMore(Boolean(data.hasMore))
+          revealOrQueue(incoming, Boolean(data.hasMore), current.length)
         }
 
         const { data: page } = await api.get<PaginatedPosts>(pathForList(kind, userId))
@@ -253,8 +314,7 @@ const PostsWidget = ({ list, userId = "", isProfile = false, onBrowseEveryone }:
             page.posts || [],
             latest.map(post => String(post._id))
           )
-          setPendingNew(prev => mergePendingPosts(prev, incoming))
-          setPendingHasMore(Boolean(page.hasMore))
+          revealOrQueue(incoming, Boolean(page.hasMore), latest.length)
         }
       } catch {
         // Keep the last good snapshot; live polls should not toast.
@@ -270,6 +330,43 @@ const PostsWidget = ({ list, userId = "", isProfile = false, onBrowseEveryone }:
     }
   }, [liveEnabled, loading, loadedFor, loadKey, loadError, kind, userId, dispatch])
 
+  useEffect(() => {
+    pendingNewRef.current = pendingNew
+  }, [pendingNew])
+
+  useEffect(() => {
+    if (!liveEnabled || loading || loadedFor !== loadKey || loadError) return
+    const el = topSentinelRef.current
+    if (!el) return
+
+    const revealPending = () => {
+      const existing = new Set(store.getState().posts.map(post => String(post._id)))
+      const pending = pendingNewRef.current.filter(post => !existing.has(String(post._id)))
+      if (!pending.length) {
+        if (pendingNewRef.current.length) {
+          setPendingNew([])
+          setPendingHasMore(false)
+        }
+        return
+      }
+      dispatch(prependPosts({ posts: pending }))
+      setPendingNew([])
+      setPendingHasMore(false)
+    }
+
+    const observer = new IntersectionObserver(
+      entries => {
+        const visible = entries.some(entry => entry.isIntersecting)
+        atTopRef.current = visible
+        setAtTop(visible)
+        if (visible) revealPending()
+      },
+      { root: null, rootMargin: "64px 0px 0px 0px", threshold: 0 }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [liveEnabled, loading, loadedFor, loadKey, loadError, posts.length, dispatch])
+
   const visiblePending = pendingNew.filter(post => !posts.some(existing => String(existing._id) === String(post._id)))
 
   const showNewPosts = () => {
@@ -277,28 +374,15 @@ const PostsWidget = ({ list, userId = "", isProfile = false, onBrowseEveryone }:
     dispatch(prependPosts({ posts: visiblePending }))
     setPendingNew([])
     setPendingHasMore(false)
+    scrollFeedToTop()
   }
 
   const newPostsChip =
-    visiblePending.length > 0 ? (
-      <Box sx={{ display: "flex", justifyContent: "center" }} aria-live="polite">
-        <Button
-          size="small"
-          variant="outlined"
-          onClick={showNewPosts}
-          sx={{
-            textTransform: "none",
-            fontWeight: 600,
-            position: "sticky",
-            top: 8,
-            zIndex: 2,
-            bgcolor: "background.paper",
-          }}
-        >
-          {liveFeedChipLabel(visiblePending.length, pendingHasMore)}
-        </Button>
-      </Box>
+    visiblePending.length > 0 && !atTop ? (
+      <NewPostsFloatButton label={liveFeedChipLabel(visiblePending.length, pendingHasMore)} onClick={showNewPosts} />
     ) : null
+
+  const topSentinel = <Box ref={topSentinelRef} aria-hidden sx={{ height: 1, pointerEvents: "none" }} />
 
   if (loading || loadedFor !== loadKey) {
     return <PostsFeedSkeleton count={3} />
@@ -326,6 +410,7 @@ const PostsWidget = ({ list, userId = "", isProfile = false, onBrowseEveryone }:
             : { actionLabel: "Browse feed", onAction: () => router.push("/home") }
     return (
       <Box sx={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+        {topSentinel}
         {newPostsChip}
         <EmptyState
           title={copy.title}
@@ -339,6 +424,7 @@ const PostsWidget = ({ list, userId = "", isProfile = false, onBrowseEveryone }:
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      {topSentinel}
       {newPostsChip}
       {posts.map((post, index) => (
         <Box

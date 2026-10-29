@@ -28,7 +28,7 @@ Full feature list for the current app, plus planned items for a later release.
 - Create text and/or image posts (emoji picker on the compose bar; image dropzone with preview)
 - Home feed with author name, avatar, and relative time
 - Infinite scroll on home feed and profile Posts tab (`?limit=&cursor=`)
-- Live feed updates on Home (Everyone / Following), profile Posts, and `/post/[postId]`: poll every 60s while the tab is visible; a **new posts** chip prepends others’ posts (no auto-insert); comments and author photos on visible posts merge in place; profile header photo refreshes silently
+- Live feed updates on Home (Everyone / Following), profile Posts, and `/post/[postId]`: poll every 60s while the tab is visible; a floating **new posts** button stays at the top of the screen when you have scrolled down (click to scroll up and load); new posts also insert if you scroll back to the top yourself; comments and author photos on visible posts merge in place; profile header photo refreshes silently
 - Home feed tabs: **Everyone** and **Following** (you + friends + people you follow)
 - Like / unlike posts (optimistic UI; rolls back on failure)
 - View who liked a post (click like count → list with profiles)
