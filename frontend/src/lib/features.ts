@@ -21,6 +21,7 @@ export const ALL_FEATURE_KEYS: FeatureFlagKey[] = [
   "postsSave",
   "friendRequests",
   "follow",
+  "messaging",
 ]
 
 export const DEFAULT_FEATURES: FeaturesMap = Object.fromEntries(

@@ -1,11 +1,15 @@
+import http from "node:http"
+
 import dotenv from "dotenv"
 import mongoose from "mongoose"
 
+import { attachRealtime } from "./lib/realtime.js"
 import { createApp } from "./app.js"
 
 dotenv.config()
 
 const app = createApp()
+const server = http.createServer(app)
 const PORT = process.env.PORT
 
 if (!process.env.MONGODB_URI) {
@@ -21,7 +25,8 @@ mongoose
   .connect(process.env.MONGODB_URI)
   .then(() => {
     console.log("mongo connected")
-    app.listen(PORT, () => console.log(`listening from ${PORT}`))
+    attachRealtime(server)
+    server.listen(PORT, () => console.log(`listening from ${PORT}`))
   })
   .catch(e => {
     console.log("mongo could not be connected")

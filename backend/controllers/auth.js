@@ -4,6 +4,7 @@ import { roleForEmail } from "../lib/admins.js"
 import { formatFriendsList } from "../lib/friends.js"
 import { isValidPassword, PASSWORD_POLICY_MESSAGE } from "../lib/password.js"
 import { relationshipCounts } from "../lib/peopleLists.js"
+import { touchLastSeen } from "../lib/realtime.js"
 import {
   consumeRefreshSession,
   issueAuthTokens,
@@ -81,6 +82,7 @@ export const register = async (req, res, next) => {
 
     const savedUser = await newUser.save()
     const tokens = await issueAuthTokens(savedUser._id)
+    await touchLastSeen(savedUser._id)
     const user = await withFormattedFriends(savedUser)
 
     res.status(201).json({ user, ...tokens })
@@ -119,6 +121,7 @@ export const login = async (req, res, next) => {
     }
 
     const tokens = await issueAuthTokens(user._id)
+    await touchLastSeen(user._id)
     const safeUser = await withFormattedFriends(user)
 
     res.status(200).json({ user: safeUser, ...tokens })

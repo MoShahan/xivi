@@ -2,7 +2,7 @@
 
 Xivi is a full-stack social networking platform packaged as an **npm workspaces** monorepo: a Next.js frontend, an Express REST API, and MongoDB.
 
-Share posts with text and images, engage with likes and comments, grow your network through friend requests and one-way follows, and browse rich profiles with friends, followers, and following. The product also includes in-app notifications, OAuth sign-in (Google, GitHub, Discord), admin feature flags, light/dark mode, and ImageKit-backed media - secured with Bearer JWT access and refresh tokens.
+Share posts with text and images, engage with likes and comments, grow your network through friend requests and one-way follows, and browse rich profiles with friends, followers, and following. The product also includes 1:1 messaging, in-app notifications, OAuth sign-in (Google, GitHub, Discord), admin feature flags, light/dark mode, and ImageKit-backed media - secured with Bearer JWT access and refresh tokens.
 
 **Author:** Mohammed Shahan
 
@@ -27,7 +27,7 @@ Share posts with text and images, engage with likes and comments, grow your netw
 | Layer    | Technologies                                                                                           |
 | -------- | ------------------------------------------------------------------------------------------------------ |
 | Frontend | Next.js 16 (App Router), React 19, TypeScript, Material UI 9, Redux Toolkit, Formik, Yup, axios        |
-| Backend  | Node.js, Express 4.22, JWT (access + refresh), bcrypt, Multer 2, Helmet, CORS, rate limiting, ImageKit |
+| Backend  | Node.js, Express 4.22, JWT (access + refresh), bcrypt, Multer 2, Helmet, CORS, rate limiting, Socket.io, ImageKit |
 | Database | MongoDB + Mongoose 8                                                                                   |
 
 ---
@@ -38,7 +38,7 @@ Share posts with text and images, engage with likes and comments, grow your netw
 Xivi/
 ├── frontend/          Next.js app (UI)
 ├── backend/           Express API
-│   ├── models/        User, Post, FriendRequest, Notification
+│   ├── models/        User, Post, FriendRequest, Conversation, Message, Notification
 │   ├── routes/
 │   ├── controllers/
 │   └── middleware/
@@ -168,7 +168,7 @@ Backend tests use **in-memory MongoDB** (`mongodb-memory-server`) - no Atlas URI
 | Database | MongoDB Atlas | `MONGODB_URI` on Render |
 | Images | ImageKit | `IMAGEKIT_*` on Render (server only) |
 
-Set production secrets only in the host dashboards (never commit `.env`). Important Render vars: `ACCESS_TOKEN_SECRET`, `REFRESH_TOKEN_SECRET`, `FRONTEND_URL` (Vercel origin, no trailing slash), `API_PUBLIC_URL` (Render origin), `TRUST_PROXY=1`, plus ImageKit and optional OAuth keys. Full list: [`backend/.env.example`](./backend/.env.example).
+Set production secrets only in the host dashboards (never commit `.env`). Important Render vars: `ACCESS_TOKEN_SECRET`, `REFRESH_TOKEN_SECRET`, `FRONTEND_URL` (Vercel origin, no trailing slash), `API_PUBLIC_URL` (Render origin), `TRUST_PROXY=1`, plus ImageKit and optional OAuth keys. Full list: [`backend/.env.example`](./backend/.env.example). Socket.io runs on the same API process (no extra credentials); the host must allow WebSocket upgrades.
 
 **Free-tier note:** Render may sleep after idle; the first request can take 30–60s.
 

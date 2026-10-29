@@ -1,12 +1,21 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { Check, HourglassEmpty, PersonAddOutlined, PersonRemoveOutlined, RssFeed } from "@mui/icons-material"
+import {
+  Check,
+  HourglassEmpty,
+  MailOutlined,
+  PersonAddOutlined,
+  PersonRemoveOutlined,
+  RssFeed,
+} from "@mui/icons-material"
 import { alpha, Box, Button, CircularProgress, IconButton, Tooltip, useTheme } from "@mui/material"
+import { useRouter } from "next/navigation"
 
 import { useAppDispatch, useAppSelector } from "@/app/hooks"
 import { api } from "@/lib/api"
 import { getErrorMessage } from "@/lib/errors"
+import { openConversation } from "@/lib/messages"
 import { useFeatureFlags } from "@/providers/FeatureFlagsProvider"
 import { useToast } from "@/providers/ToastProvider"
 import { setFollowing, setFriends } from "@/state"
@@ -67,6 +76,7 @@ const RelationshipActions = ({
   const dispatch = useAppDispatch()
   const loggedInId = useAppSelector(state => state.user?._id)
   const { success, error: toastError } = useToast()
+  const router = useRouter()
   const { enabled } = useFeatureFlags()
   const canFriend = enabled("friendRequests")
   const canFollow = enabled("follow")
@@ -78,6 +88,7 @@ const RelationshipActions = ({
   const [rel, setRel] = useState<UserRelationship>(() => relFromInitial(initial))
   const [loading, setLoading] = useState(() => initial == null)
   const [busy, setBusy] = useState(false)
+  const canMessage = enabled("messaging") && !rel.blockedByMe
 
   if (relUserId !== userId) {
     setRelUserId(userId)
@@ -162,7 +173,7 @@ const RelationshipActions = ({
     return null
   }
 
-  if (!canFriend && !canFollow) {
+  if (!canFriend && !canFollow && !canMessage) {
     return null
   }
 
@@ -250,6 +261,41 @@ const RelationshipActions = ({
   const followIcon = rel.isFollowing ? <Check sx={{ fontSize: "1.1rem" }} /> : <RssFeed sx={{ fontSize: "1.1rem" }} />
   const followSurface = rel.isFollowing ? activeSurface : coverSurface
 
+  const startMessage = () =>
+    run(async () => {
+      const conversation = await openConversation(userId)
+      router.push(`/messages/${conversation._id}`)
+    })
+
+  const messageButton = canMessage ? (
+    <Tooltip title="Message">
+      <span>
+        {dense ? (
+          <IconButton
+            size="small"
+            disabled={busy}
+            onClick={() => void startMessage()}
+            aria-label="Message"
+            sx={{ ...iconChipBase, ...coverSurface }}
+          >
+            <MailOutlined sx={{ fontSize: "1.1rem" }} />
+          </IconButton>
+        ) : (
+          <Button
+            size="small"
+            disabled={busy}
+            onClick={() => void startMessage()}
+            aria-label="Message"
+            startIcon={<MailOutlined sx={{ fontSize: "1rem !important" }} />}
+            sx={{ ...chipBase, ...coverSurface }}
+          >
+            Message
+          </Button>
+        )}
+      </span>
+    </Tooltip>
+  ) : null
+
   if (dense) {
     return (
       <Box
@@ -261,6 +307,7 @@ const RelationshipActions = ({
           flexShrink: 0,
         }}
       >
+        {messageButton}
         {canFollow ? (
           <Tooltip title={followTip}>
             <span>
@@ -366,6 +413,7 @@ const RelationshipActions = ({
         gap: 0.75,
       }}
     >
+      {messageButton}
       {canFollow ? (
         <Tooltip title={followTip}>
           <span>

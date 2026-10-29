@@ -6,6 +6,7 @@ import { Fraunces, Source_Sans_3 } from "next/font/google"
 import AuthProvider from "@/providers/AuthProvider"
 import FeatureFlagsProvider from "@/providers/FeatureFlagsProvider"
 import ProductTourProvider from "@/providers/ProductTourProvider"
+import RealtimeProvider from "@/providers/RealtimeProvider"
 import ReduxProvider from "@/providers/ReduxProvider"
 import ThemeProviderComp from "@/providers/ThemeProvider"
 import ToastProvider from "@/providers/ToastProvider"
@@ -51,14 +52,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ReduxProvider>
             <AuthProvider>
               <FeatureFlagsProvider>
-                <ThemeProviderComp>
-                  <ToastProvider>
-                    <ProductTourProvider>
-                      <CssBaseline />
-                      {children}
-                    </ProductTourProvider>
-                  </ToastProvider>
-                </ThemeProviderComp>
+                <RealtimeProvider>
+                  <ThemeProviderComp>
+                    <ToastProvider>
+                      <ProductTourProvider>
+                        <CssBaseline />
+                        {children}
+                      </ProductTourProvider>
+                    </ToastProvider>
+                  </ThemeProviderComp>
+                </RealtimeProvider>
               </FeatureFlagsProvider>
             </AuthProvider>
           </ReduxProvider>

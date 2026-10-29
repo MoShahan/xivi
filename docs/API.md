@@ -66,12 +66,23 @@ Authorization: Bearer <accessToken>
 | `GET`    | `/posts/:postId/comments/:commentId/likes`     | Users who liked a comment (`?page=&limit=`)                                                                                                                                                     |
 | `PATCH`  | `/posts/:postId/comments/:commentId/like`      | Like or unlike a comment                                                                                                                                                                        |
 | `DELETE` | `/posts/:postId`                               | Delete own post (or any post if admin)                                                                                                                                                          |
+| `GET`    | `/conversations`                               | Inbox (`?box=friends\|requests&limit=&cursor=` → `{ conversations, nextCursor, hasMore }`)                                                                                                      |
+| `GET`    | `/conversations/unread-count`                  | Unread conversation count (Messages rail badge)                                                                                                                                                 |
+| `POST`   | `/conversations`                               | Find-or-create 1:1 thread (`{ recipientId, text? }`)                                                                                                                                            |
+| `GET`    | `/conversations/:id`                           | Thread header + other user + presence                                                                                                                                                           |
+| `GET`    | `/conversations/:id/messages`                  | Messages newest-first (`?limit=&cursor=`)                                                                                                                                                       |
+| `POST`   | `/conversations/:id/messages`                  | Send `{ text }` (max 2000) then socket `message`                                                                                                                                                |
+| `PATCH`  | `/conversations/:id/read`                      | Mark thread read for the caller; socket `read`                                                                                                                                                  |
 | `GET`    | `/settings/features`                           | Site feature flags (auth; defaults all `true`)                                                                                                                                                  |
 | `PATCH`  | `/settings/features`                           | Admin: merge partial `{ features: { postsCreate: false, … } }`                                                                                                                                  |
 
 ### Feature flags
 
 Flags apply to **`role: user` only** - admins always bypass. When a write is blocked the API returns **403** `{ error: "This feature is currently disabled" }`. See [FEATURES.md](./FEATURES.md) for the catalog and UI behavior.
+
+### Realtime (Socket.io)
+
+The API process also serves Socket.io on the same HTTP server (no extra host or API key). The browser connects to `NEXT_PUBLIC_API_URL` with `auth.token` = access JWT. Hosting must allow WebSocket upgrades. Events: `join` / `leave` / `typing` (client); `message` / `read` / `presence` / `typing` (server). Messages are always saved over REST first.
 
 ---
 

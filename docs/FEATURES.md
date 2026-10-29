@@ -71,11 +71,23 @@ Full feature list for the current app, plus planned items for a later release.
 - Slim top-bar bell with unread badge
 - `/notifications` page with mark-read / mark-all-read
 
+## Messages
+
+- 1:1 DMs at `/messages` (desktop two-pane; mobile list then thread)
+- **Friends** inbox after an accepted friend request; **Other** inbox for follow-only or pending requests
+- Start a chat from Messages (new chat search) or a **Message** button on profiles / people rows
+- Live delivery via Socket.io on the API server (same JWT; no extra Socket.io account or secret)
+- Typing indicator, online / last-seen in the thread header
+- Ticks on your messages: clock (sending), single tick (saved), double tick (they opened the thread)
+- Unread badge on the Messages rail item (not the notifications bell)
+- Blocked pairs cannot message each other
+- Feature flag `messaging` (admins always keep access)
+
 ## Settings
 
 - `/settings` in the left app shell for every signed-in user
 - Regular users see a **coming soon** empty state (personal settings not available yet)
-- Admins manage **Site settings / Features** (live toggles): create/edit/delete posts, images, emoji picker, comments, likes, share, notifications, profile edit/avatar, save, friend requests, follow
+- Admins manage **Site settings / Features** (live toggles): create/edit/delete posts, images, emoji picker, comments, likes, share, notifications, profile edit/avatar, save, friend requests, follow, messaging
 - Flags apply to **users only**; **admins always keep full capability**
 - FE hides related controls when a flag is off; API rejects restricted writes with 403
 - `GET /settings/features` (any auth user); `PATCH /settings/features` (admin only)
@@ -104,7 +116,7 @@ Full feature list for the current app, plus planned items for a later release.
 - Stone-first theme + Fraunces / Source Sans 3; Xivi logo + mark; favicon / apple-touch icon
 - Split login/register layout with atmosphere images
 - **Help & FAQ** (`/help`), **Coming soon** (`/coming-soon`), **Privacy** (`/privacy`), **Terms** (`/terms`)
-- Authenticated **app shell**: left sidebar (Home, Messages, Find people, Friend requests, Groups, Events, Marketplace, News, Settings, Coming soon, Help, tutorial, theme; name/photo opens your profile; logout) + slim top bar (notifications bell); mobile hamburger drawer. Messages / Groups / Events / Marketplace / News are **Coming soon placeholders** (no product yet). Notifications stay on the bell, not a second rail item.
+- Authenticated **app shell**: left sidebar (Home, Messages, Find people, Friend requests, Groups, Events, Marketplace, News, Settings, Coming soon, Help, tutorial, theme; name/photo opens your profile; logout) + slim top bar (notifications bell); mobile hamburger drawer. Groups / Events / Marketplace / News are **Coming soon placeholders**. Notifications stay on the bell, not a second rail item.
 - In-app **product tutorial** (`react-joyride`): rail **Show tutorial** (compose, Find people, notifications, profile); replayable; optional one-time auto-run
 - Mobile nav drawer mirrors the left rail items
 - Skeleton loaders for posts feed, profile header, likers / friends / followers / following lists, and friend-request inbox
@@ -138,7 +150,7 @@ These are **not** in the current release. Planned for a later update:
 - Comment replies + @mentions (see below)
 - Hashtags on posts (see below)
 - Multiple images per post, image compression, and soft-delete posts
-- Messaging / DMs / chat (see below) - sidebar tab exists as a placeholder
+- Richer DMs (see below) - delivered ticks, images in chat, edit/delete, hide last seen, push alerts, group threads
 - Groups - create/join communities with their own feed (sidebar placeholder)
 - Events - time-bound hangouts, separate from Groups (sidebar placeholder)
 - Marketplace - member buy/sell listings, not site ads (sidebar placeholder)
@@ -187,16 +199,16 @@ So: comment A → children B, C, D in one column. Reply to C still lands under D
 - Tags are derived from the caption on create/edit. They are not a separate picker in v1.
 - Mentions (`@name`) stay people; hashtags (`#topic`) stay topics.
 
-### Messaging / DMs
+### Richer DMs
 
-**Not in this release.** A **Messages** tab is in the sidebar (`/messages`) as a placeholder.
+**Not in this release.** 1:1 text chat already ships. These extras come later:
 
-Two inboxes when it ships:
-
-- **Friends inbox** - you can message someone here only after they **accept your friend request**. Mutual friends only.
-- **Other / requests inbox** - if you **only follow** them, or a friend request is still **pending**, the message does **not** enter their Friends inbox. It goes to a separate inbox they can open or ignore.
-
-Following someone is not enough for the Friends inbox.
+- **Delivered-to-device tick** - grey double tick when the other person’s client has the message, before they open the thread. Today: clock (sending), one tick (saved on the server), two ticks (they opened the chat).
+- **Images in DMs** - photos, GIFs, or files in a thread. Chat is text-only now.
+- **Edit / delete** - change or remove a sent message.
+- **Last-seen privacy** - hide Online / last seen from people in a chat.
+- **Push notifications** - a browser or phone alert when the tab is closed. Unread today is only the in-app Messages badge.
+- **Group chats** - one thread with several people. Separate from the **Groups** community tab.
 
 ### Groups, Events, Marketplace, News
 

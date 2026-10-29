@@ -20,6 +20,7 @@ export type FeatureFlagKey =
   | "postsSave"
   | "friendRequests"
   | "follow"
+  | "messaging"
 
 export type FeatureCatalogItem = {
   key: FeatureFlagKey
@@ -141,6 +142,11 @@ export const FEATURE_CATALOG_GROUPS: FeatureCatalogGroup[] = [
         key: "follow",
         label: "Follow / unfollow",
         description: "When off, users cannot follow or unfollow.",
+      },
+      {
+        key: "messaging",
+        label: "Messaging",
+        description: "When off, users cannot send or open private messages.",
       },
     ],
   },

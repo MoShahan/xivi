@@ -16,6 +16,8 @@ Database name comes from the path in `MONGODB_URI` (local/Atlas). Collection nam
 | `posts`          | `Post.js`          | Feed posts; **comments embedded**                   |
 | `friendrequests` | `FriendRequest.js` | Friend request lifecycle                            |
 | `blocks`         | `Block.js`         | One-way block rows (mutual hide is enforced in API) |
+| `conversations`  | `Conversation.js`  | 1:1 DM threads                                      |
+| `messages`       | `Message.js`       | DM messages                                         |
 | `notifications`  | `Notification.js`  | In-app notifications                                |
 | `sitesettings`   | `SiteSettings.js`  | Singleton site feature flags (`_id: "global"`)      |
 
@@ -66,6 +68,7 @@ There is **no** separate `comments` collection.
 | `linkedin`       | String            |          | `""`        |                                                                                                            |
 | `instagram`      | String            |          | `""`        |                                                                                                            |
 | `viewedProfile`  | Number            |          | `0`         | Incremented on other-user profile views                                                                    |
+| `lastSeenAt`     | Date              |          | `null`      | Login and socket disconnect; chat presence only, not on discover cards                                     |
 | `createdAt`      | Date              | auto     |             |                                                                                                            |
 | `updatedAt`      | Date              | auto     |             |                                                                                                            |
 
@@ -172,6 +175,50 @@ None declared on the Post schema today (feed/profile queries may benefit from `{
 
 ---
 
+## `conversations`
+
+**File:** `backend/models/Conversation.js`  
+**Timestamps:** `createdAt`, `updatedAt`
+
+| Field             | Type              | Required | Default | Notes                                      |
+| ----------------- | ----------------- | -------- | ------- | ------------------------------------------ |
+| `_id`             | ObjectId          | auto     |         | Primary key                                |
+| `participants`    | ObjectId[] → User | yes      |         | Exactly two users                          |
+| `participantKey`  | String            | yes      |         | Sorted `"idA:idB"`; **unique**             |
+| `lastMessageAt`   | Date              |          | now     | Inbox sort                                 |
+| `lastMessageText` | String            |          | `""`    | Preview snippet                            |
+| `lastSenderId`    | ObjectId → User   |          | `null`  | Who sent the preview                       |
+| `lastReadAt`      | Map\<String, Date\> |        |         | Per-participant last opened time           |
+
+### Indexes
+
+| Index        | Spec                                      |
+| ------------ | ----------------------------------------- |
+| Unique pair  | `{ participantKey: 1 }` unique            |
+| Inbox        | `{ participants: 1, lastMessageAt: -1 }`  |
+
+---
+
+## `messages`
+
+**File:** `backend/models/Message.js`  
+**Timestamps:** `createdAt`, `updatedAt`
+
+| Field            | Type            | Required | Notes            |
+| ---------------- | --------------- | -------- | ---------------- |
+| `_id`            | ObjectId        | auto     | Primary key      |
+| `conversationId` | ObjectId → Conversation | yes | Indexed        |
+| `senderId`       | ObjectId → User | yes      | From JWT         |
+| `text`           | String          | yes      | Max 2000         |
+
+### Indexes
+
+| Index   | Spec                                   |
+| ------- | -------------------------------------- |
+| Thread  | `{ conversationId: 1, createdAt: -1 }` |
+
+---
+
 ## `notifications`
 
 **File:** `backend/models/Notification.js`  
@@ -211,6 +258,8 @@ User ──saves────► Post[] (savedPosts)
 User ──from/to──► FriendRequest
 User ──blocker/blocked──► Block
 User ──recipient/actor──► Notification
+User ──participants──► Conversation
+Conversation ──has──► Message[]
 Post ──embeds───► Comment[]
 Post ◄──optional── Notification.postId
 ```

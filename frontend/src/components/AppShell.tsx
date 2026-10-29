@@ -43,6 +43,7 @@ import { api } from "@/lib/api"
 import { TOUR_OPEN_FIND_PEOPLE_NAV_EVENT, TOUR_OPEN_MENU_EVENT } from "@/lib/productTour"
 import { useFeatureFlags } from "@/providers/FeatureFlagsProvider"
 import { useProductTour } from "@/providers/ProductTourProvider"
+import { useRealtime } from "@/providers/RealtimeProvider"
 import { useToast } from "@/providers/ToastProvider"
 import { setLogout, toggleMode } from "@/state"
 import { store } from "@/state/store"
@@ -62,6 +63,8 @@ type AppShellProps = {
   children: ReactNode
   /** Constrain main content width (post, notifications, people, etc.). */
   narrow?: boolean
+  /** Fill remaining viewport height with no page gutters (Messages). */
+  fill?: boolean
 }
 
 type NavItem = {
@@ -74,7 +77,7 @@ type NavItem = {
   match: (pathname: string) => boolean
 }
 
-const AppShell = ({ children, narrow = false }: AppShellProps) => {
+const AppShell = ({ children, narrow = false, fill = false }: AppShellProps) => {
   const theme = useTheme()
   const router = useRouter()
   const pathname = usePathname() || ""
@@ -84,6 +87,7 @@ const AppShell = ({ children, narrow = false }: AppShellProps) => {
   const { startTour } = useProductTour()
   const { enabled } = useFeatureFlags()
   const showNotifications = enabled("notifications")
+  const { unreadCount } = useRealtime()
   const isWide = useMediaQuery("(min-width: 1000px)")
   const [mobileOpen, setMobileOpen] = useState(false)
   const [friendRequestCount, setFriendRequestCount] = useState(0)
@@ -175,6 +179,7 @@ const AppShell = ({ children, narrow = false }: AppShellProps) => {
       label: "Messages",
       href: "/messages",
       icon: <MailOutlined />,
+      badge: unreadCount,
       match: p => p === "/messages" || p.startsWith("/messages/"),
     },
     {
@@ -481,9 +486,19 @@ const AppShell = ({ children, narrow = false }: AppShellProps) => {
         </Box>
       ) : null}
 
-      <Box sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+      <Box
+        sx={{
+          flex: 1,
+          minWidth: 0,
+          display: "flex",
+          flexDirection: "column",
+          ...(fill ? { height: "100dvh", overflow: "hidden" } : null),
+        }}
+      >
         {topBar}
-        <PageShell narrow={narrow}>{children}</PageShell>
+        <PageShell narrow={narrow} fill={fill}>
+          {children}
+        </PageShell>
       </Box>
 
       <Drawer

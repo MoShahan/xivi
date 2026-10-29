@@ -19,6 +19,7 @@ export const FEATURE_KEYS = [
   "postsSave",
   "friendRequests",
   "follow",
+  "messaging",
 ] 
 
 export const FEATURE_DISABLED_ERROR = "This feature is currently disabled"

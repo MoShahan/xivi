@@ -22,6 +22,9 @@ erDiagram
   USER ||--o{ USER : "following (one-way)"
   USER ||--o{ BLOCK : "blocker"
   USER ||--o{ BLOCK : "blocked"
+  USER ||--o{ CONVERSATION : "participants"
+  CONVERSATION ||--o{ MESSAGE : "contains"
+  USER ||--o{ MESSAGE : "senderId"
   USER ||--o{ POST : "savedPosts"
   USER ||--o| USER : "deactivatedBy"
   POST ||--|{ COMMENT : "embeds"
@@ -50,6 +53,7 @@ erDiagram
     string linkedin
     string instagram
     number viewedProfile
+    date lastSeenAt "chat presence"
     date createdAt
     date updatedAt
   }
@@ -94,6 +98,27 @@ erDiagram
     date updatedAt
   }
 
+  CONVERSATION {
+    ObjectId _id PK
+    ObjectId participants "exactly two User ids"
+    string participantKey UK
+    date lastMessageAt
+    string lastMessageText
+    ObjectId lastSenderId FK
+    map lastReadAt "userId -> Date"
+    date createdAt
+    date updatedAt
+  }
+
+  MESSAGE {
+    ObjectId _id PK
+    ObjectId conversationId FK
+    ObjectId senderId FK
+    string text
+    date createdAt
+    date updatedAt
+  }
+
   NOTIFICATION {
     ObjectId _id PK
     ObjectId recipient FK
@@ -117,6 +142,8 @@ erDiagram
 | `posts`          | `backend/models/Post.js`          | Feed content; comments embedded                |
 | `friendrequests` | `backend/models/FriendRequest.js` | Pending/accepted/declined/cancelled requests   |
 | `blocks`         | `backend/models/Block.js`         | Blocker → blocked, with private reason         |
+| `conversations`  | `backend/models/Conversation.js`  | 1:1 DM threads                                 |
+| `messages`       | `backend/models/Message.js`       | DM messages                                    |
 | `notifications`  | `backend/models/Notification.js`  | In-app bell notifications                      |
 
 `Comment` is **not** a separate collection - it is an embedded subdocument array on `Post`.
@@ -133,6 +160,8 @@ erDiagram
 | Saved posts          | `User.savedPosts` → `Post`                                                     |
 | Friend request       | `FriendRequest.from` / `.to` → `User` (unique pending pair index)              |
 | Block                | `Block.blocker` / `.blocked` → `User` (unique pair; API hides both directions) |
+| Conversation         | Two `participants` + unique `participantKey`                                   |
+| Message              | `Message.conversationId` → Conversation; `senderId` → User                     |
 | Notification         | `recipient` + `actor` → `User`; optional `postId` → `Post`                     |
 | Admin deactivate     | `User.deactivatedBy` → `User`                                                  |
 

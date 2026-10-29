@@ -217,12 +217,16 @@ const ITEMS: RoadmapItem[] = [
     icon: <ImageOutlined />,
   },
   {
-    title: "Messaging and DMs",
-    summary: "Private conversations so you can talk one-to-one without putting everything on a post.",
+    title: "Richer messaging",
+    summary:
+      "1:1 text chat is live. Later: photos in a thread, edit or delete a send, a delivered tick, hide last seen, push alerts, and group threads.",
     details: [
-      "A Messages tab is in the sidebar now. Conversations are not built yet.",
-      "Friends inbox: message someone here only after they accept your friend request.",
-      "Other inbox: follow-only or a still-pending friend request does not land in Friends. That message goes to a separate requests inbox.",
+      "Delivered tick: grey double tick when it reaches their device, before they open the chat. Today two ticks means they opened the thread.",
+      "Images, GIFs, or files in a DM. Chat is text-only now.",
+      "Edit or delete a message you already sent.",
+      "Hide Online / last seen from people in a chat.",
+      "A browser or phone alert if the tab is closed. Unread today is only the Messages badge in the app.",
+      "Group chats: several people in one thread. That is not the Groups community tab.",
     ],
     icon: <ForumOutlined />,
   },

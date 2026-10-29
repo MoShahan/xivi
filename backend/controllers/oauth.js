@@ -10,6 +10,7 @@ import {
   listConfiguredOauthProviders,
   verifyOauthState,
 } from "../lib/oauth.js"
+import { touchLastSeen } from "../lib/realtime.js"
 import { issueAuthTokens } from "../lib/tokens.js"
 import User from "../models/User.js"
 
@@ -103,6 +104,7 @@ export const oauthCallback = async (req, res, next) => {
     }
 
     const tokens = await issueAuthTokens(user._id)
+    await touchLastSeen(user._id)
 
     const handoff = new URL("/auth/callback", frontendOrigin())
     const fragment = new URLSearchParams({

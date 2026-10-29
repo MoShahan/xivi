@@ -67,6 +67,8 @@ const UserSchema = new Schema(
     linkedin: { type: String, default: "" },
     instagram: { type: String, default: "" },
     viewedProfile: { type: Number, default: 0 },
+    /** Last known activity (login or socket disconnect). Chat presence only. */
+    lastSeenAt: { type: Date, default: null },
     /** Hashed refresh token sessions (jti + sha256). Not returned to clients. */
     refreshSessions: {
       type: [
