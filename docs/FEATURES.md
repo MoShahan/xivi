@@ -42,6 +42,7 @@ Full feature list for the current app, plus planned items for a later release.
 - Single-post page at `/post/[postId]`
 - Share menu (copy link, X, Facebook, LinkedIn, WhatsApp)
 - Expandable post/comment text (“See more”)
+- Click a post photo to open a fullscreen lightbox (Escape, backdrop click, or close)
 
 ## Friends, follow & profiles
 
@@ -135,7 +136,6 @@ These are **not** in the current release. Planned for a later update:
 - Comment replies + @mentions (see below)
 - Live feed updates (see below)
 - Multiple images per post, image compression, and soft-delete posts
-- Fullscreen post images (see below)
 - Messaging / DMs / chat (see below) - sidebar tab exists as a placeholder
 - Groups - create/join communities with their own feed (sidebar placeholder)
 - Events - time-bound hangouts, separate from Groups (sidebar placeholder)
@@ -172,10 +172,6 @@ A   Comment
 ```
 
 So: comment A → children B, C, D in one column. Reply to C still lands under D as another child of A, not pushed further right.
-
-### Fullscreen post images
-
-**Not in this release.** Clicking a photo on a post keeps it in the card. A later update will open that image fullscreen (lightbox / modal). Close with Escape, backdrop click, or an explicit close control. The exact viewer chrome is not decided yet.
 
 ### Live feed updates
 

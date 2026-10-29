@@ -14,6 +14,7 @@ import {
   ImageOutlined,
   LinkedIn,
   MoreVert,
+  OpenInFull,
   SendRounded,
   ShareOutlined,
   WhatsApp,
@@ -67,6 +68,8 @@ import ExpandableText from "./ExpandableText"
 import FlexBetween from "./FlexBetween"
 import Friend from "./Friend"
 import LikersDialog from "./LikersDialog"
+import PostImageLightbox from "./PostImageLightbox"
+import { unstyledButtonSx } from "./sharedSx"
 import UserImage from "./UserImage"
 import WidgetWrapper from "./WidgetWrapper"
 
@@ -138,6 +141,7 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
   const [editError, setEditError] = useState<string | undefined>()
   const [isSavingEditPost, setIsSavingEditPost] = useState(false)
   const [imageFailed, setImageFailed] = useState(false)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
   const editDescriptionInputRef = useRef<HTMLInputElement>(null)
   const commentInputRef = useRef<HTMLInputElement>(null)
   const editCommentInputRef = useRef<HTMLInputElement>(null)
@@ -523,17 +527,62 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
             </Typography>
           ) : (
             <Box
-              component="img"
-              alt="Post image"
-              src={mediaUrl(post.url)}
-              onError={() => setImageFailed(true)}
+              component="button"
+              type="button"
+              onClick={() => setLightboxOpen(true)}
+              aria-label="View image fullscreen"
               sx={{
+                ...unstyledButtonSx,
+                position: "relative",
                 display: "block",
                 width: "100%",
-                maxHeight: { xs: "min(300px, 45vh)", sm: "min(360px, 50vh)" },
-                objectFit: "contain",
+                cursor: "zoom-in",
+                "& img": {
+                  transition: "filter 0.15s ease",
+                },
+                "&:hover img, &:focus-visible img": {
+                  filter: "brightness(0.92)",
+                },
+                "&:hover .post-image-expand, &:focus-visible .post-image-expand": {
+                  opacity: 1,
+                },
               }}
-            />
+            >
+              <Box
+                component="img"
+                alt={`Photo by ${authorName}`}
+                src={mediaUrl(post.url)}
+                onError={() => setImageFailed(true)}
+                sx={{
+                  display: "block",
+                  width: "100%",
+                  maxHeight: { xs: "min(300px, 45vh)", sm: "min(360px, 50vh)" },
+                  objectFit: "contain",
+                }}
+              />
+              <Box
+                className="post-image-expand"
+                aria-hidden
+                sx={{
+                  position: "absolute",
+                  top: 8,
+                  right: 8,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 32,
+                  height: 32,
+                  borderRadius: "10px",
+                  opacity: 0,
+                  pointerEvents: "none",
+                  bgcolor: theme => alpha(theme.palette.common.black, 0.72),
+                  color: "common.white",
+                  transition: "opacity 0.15s ease",
+                }}
+              >
+                <OpenInFull sx={{ fontSize: "1rem" }} />
+              </Box>
+            </Box>
           )}
         </Box>
       ) : null}
@@ -1528,6 +1577,16 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
         }
         title="Liked by"
       />
+
+      {post.url ? (
+        <PostImageLightbox
+          open={lightboxOpen}
+          onClose={() => setLightboxOpen(false)}
+          src={post.url}
+          alt={`Photo by ${authorName}`}
+          caption={`Photo by ${authorName}`}
+        />
+      ) : null}
     </WidgetWrapper>
   )
 }
