@@ -6,9 +6,18 @@ import { useRouter } from "next/navigation"
 
 import { api } from "@/lib/api"
 import { getErrorMessage } from "@/lib/errors"
+import {
+  liveFeedChipLabel,
+  mergePendingPosts,
+  newestCreatedAt,
+  shouldMergePolledPost,
+  splitLiveFeedPage,
+  startLiveFeedPoll,
+} from "@/lib/liveFeed"
 import { useToast } from "@/providers/ToastProvider"
-import { appendPosts, setPosts } from "@/state"
-import type { PaginatedPosts } from "@/types/models"
+import { appendPosts, prependPosts, setPost, setPosts } from "@/state"
+import { store } from "@/state/store"
+import type { PaginatedPosts, Post } from "@/types/models"
 
 import { useAppDispatch, useAppSelector } from "../app/hooks"
 
@@ -68,9 +77,18 @@ function usesCursorPagination(_kind: PostsListKind): boolean {
   return true
 }
 
-function pathForList(kind: PostsListKind, userId: string, cursor?: string | null): string {
+function listSupportsLiveUpdates(kind: PostsListKind): boolean {
+  return kind === "feed" || kind === "friends" || kind === "authored"
+}
+
+function pathForList(
+  kind: PostsListKind,
+  userId: string,
+  opts?: { cursor?: string | null; since?: string | null }
+): string {
   const params = new URLSearchParams({ limit: String(PAGE_LIMIT) })
-  if (cursor) params.set("cursor", cursor)
+  if (opts?.since) params.set("since", opts.since)
+  else if (opts?.cursor) params.set("cursor", opts.cursor)
 
   switch (kind) {
     case "feed":
@@ -90,12 +108,7 @@ function pathForList(kind: PostsListKind, userId: string, cursor?: string | null
   }
 }
 
-const PostsWidget = ({
-  list,
-  userId = "",
-  isProfile = false,
-  onBrowseEveryone,
-}: PostsWidgetProps) => {
+const PostsWidget = ({ list, userId = "", isProfile = false, onBrowseEveryone }: PostsWidgetProps) => {
   const dispatch = useAppDispatch()
   const router = useRouter()
   const posts = useAppSelector(state => state.posts)
@@ -114,7 +127,11 @@ const PostsWidget = ({
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const loadingMoreRef = useRef(false)
 
+  const [pendingNew, setPendingNew] = useState<Post[]>([])
+  const [pendingHasMore, setPendingHasMore] = useState(false)
+
   const loadKey = kind === "authored" ? `authored:${userId}` : kind
+  const liveEnabled = listSupportsLiveUpdates(kind)
 
   useEffect(() => {
     if (kind === "authored" && !userId) return
@@ -127,6 +144,8 @@ const PostsWidget = ({
         setLoadMoreError(null)
         setNextCursor(null)
         setHasMore(false)
+        setPendingNew([])
+        setPendingHasMore(false)
         const path = pathForList(kind, userId)
         const { data } = await api.get<PaginatedPosts>(path)
         if (cancelled) return
@@ -156,7 +175,7 @@ const PostsWidget = ({
     setLoadingMore(true)
     setLoadMoreError(null)
     try {
-      const path = pathForList(kind, userId, nextCursor)
+      const path = pathForList(kind, userId, { cursor: nextCursor })
       const { data } = await api.get<PaginatedPosts>(path)
       dispatch(appendPosts({ posts: data.posts || [] }))
       setNextCursor(data.nextCursor)
@@ -169,7 +188,19 @@ const PostsWidget = ({
       loadingMoreRef.current = false
       setLoadingMore(false)
     }
-  }, [paginated, hasMore, nextCursor, kind, userId, dispatch, toastError])
+  }, [
+    paginated,
+    hasMore,
+    nextCursor,
+    kind,
+    userId,
+    dispatch,
+    toastError,
+    setLoadingMore,
+    setLoadMoreError,
+    setNextCursor,
+    setHasMore,
+  ])
 
   useEffect(() => {
     // Pause auto-fetch while an error is showing so we don't spam retries.
@@ -188,6 +219,86 @@ const PostsWidget = ({
     observer.observe(el)
     return () => observer.disconnect()
   }, [paginated, hasMore, loadMore, loadMoreError, loadedFor, posts.length])
+
+  useEffect(() => {
+    if (!liveEnabled || loading || loadedFor !== loadKey || loadError) return
+    if (kind === "authored" && !userId) return
+
+    let cancelled = false
+    const tick = async () => {
+      try {
+        const current = store.getState().posts
+        const since = newestCreatedAt(current)
+        const currentIds = current.map(post => String(post._id))
+
+        if (since) {
+          const { data } = await api.get<PaginatedPosts>(pathForList(kind, userId, { since }))
+          if (cancelled) return
+          const { pendingNew: incoming } = splitLiveFeedPage(data.posts || [], currentIds)
+          setPendingNew(prev => mergePendingPosts(prev, incoming))
+          setPendingHasMore(Boolean(data.hasMore))
+        }
+
+        const { data: page } = await api.get<PaginatedPosts>(pathForList(kind, userId))
+        if (cancelled) return
+        const latest = store.getState().posts
+        for (const post of page.posts || []) {
+          const local = latest.find(item => String(item._id) === String(post._id))
+          if (!shouldMergePolledPost(local)) continue
+          dispatch(setPost({ post }))
+        }
+
+        if (!since) {
+          const { pendingNew: incoming } = splitLiveFeedPage(
+            page.posts || [],
+            latest.map(post => String(post._id))
+          )
+          setPendingNew(prev => mergePendingPosts(prev, incoming))
+          setPendingHasMore(Boolean(page.hasMore))
+        }
+      } catch {
+        // Keep the last good snapshot; live polls should not toast.
+      }
+    }
+
+    const stop = startLiveFeedPoll(() => {
+      void tick()
+    })
+    return () => {
+      cancelled = true
+      stop()
+    }
+  }, [liveEnabled, loading, loadedFor, loadKey, loadError, kind, userId, dispatch])
+
+  const visiblePending = pendingNew.filter(post => !posts.some(existing => String(existing._id) === String(post._id)))
+
+  const showNewPosts = () => {
+    if (!visiblePending.length) return
+    dispatch(prependPosts({ posts: visiblePending }))
+    setPendingNew([])
+    setPendingHasMore(false)
+  }
+
+  const newPostsChip =
+    visiblePending.length > 0 ? (
+      <Box sx={{ display: "flex", justifyContent: "center" }} aria-live="polite">
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={showNewPosts}
+          sx={{
+            textTransform: "none",
+            fontWeight: 600,
+            position: "sticky",
+            top: 8,
+            zIndex: 2,
+            bgcolor: "background.paper",
+          }}
+        >
+          {liveFeedChipLabel(visiblePending.length, pendingHasMore)}
+        </Button>
+      </Box>
+    ) : null
 
   if (loading || loadedFor !== loadKey) {
     return <PostsFeedSkeleton count={3} />
@@ -214,17 +325,21 @@ const PostsWidget = ({
             ? undefined
             : { actionLabel: "Browse feed", onAction: () => router.push("/home") }
     return (
-      <EmptyState
-        title={copy.title}
-        description={copy.description}
-        actionLabel={cta?.actionLabel}
-        onAction={cta?.onAction}
-      />
+      <Box sx={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+        {newPostsChip}
+        <EmptyState
+          title={copy.title}
+          description={copy.description}
+          actionLabel={cta?.actionLabel}
+          onAction={cta?.onAction}
+        />
+      </Box>
     )
   }
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      {newPostsChip}
       {posts.map((post, index) => (
         <Box
           key={post._id}

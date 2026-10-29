@@ -1,14 +1,9 @@
 import { assertFeatureEnabled } from "../lib/features.js"
 import { uploadImageBuffer } from "../lib/imagekit.js"
 import { createNotification } from "../lib/notifications.js"
-import { pageFromDocs, parseCursorPagination } from "../lib/pagination.js"
+import { createdAtFilter, pageFromDocs, parseCursorPagination } from "../lib/pagination.js"
 import { COMMENTS_PER_POST_MAX, graphemeLength, POST_DESCRIPTION_MAX } from "../lib/postLimits.js"
-import {
-  likesMapKeys,
-  parseLikersPagination,
-  resolveLikersPage,
-  withAuthors,
-} from "../lib/posts.js"
+import { likesMapKeys, parseLikersPagination, resolveLikersPage, withAuthors } from "../lib/posts.js"
 import Post from "../models/Post.js"
 import User from "../models/User.js"
 
@@ -62,13 +57,10 @@ export const getFeed = async (req, res, next) => {
     }
 
     const scopeRaw = typeof req.query.scope === "string" ? req.query.scope.trim().toLowerCase() : "all"
-    const scope =
-      scopeRaw === "friends" || scopeRaw === "following" || scopeRaw === "network"
-        ? "friends"
-        : "all"
+    const scope = scopeRaw === "friends" || scopeRaw === "following" || scopeRaw === "network" ? "friends" : "all"
 
-    const { limit, cursorDate } = parseCursorPagination(req.query)
-    const filter = cursorDate ? { createdAt: { $lt: cursorDate } } : {}
+    const { limit, cursorDate, sinceDate } = parseCursorPagination(req.query)
+    const filter = createdAtFilter({ sinceDate, cursorDate })
 
     if (scope === "friends") {
       const me = await User.findById(userId).select("friends following")
@@ -85,7 +77,9 @@ export const getFeed = async (req, res, next) => {
       filter.userId = { $in: authorIds }
     }
 
-    const docs = await Post.find(filter).sort({ createdAt: -1 }).limit(limit + 1)
+    const docs = await Post.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(limit + 1)
     const { pageDocs, nextCursor, hasMore } = pageFromDocs(docs, limit)
     res.status(200).json({
       posts: await withAuthors(pageDocs),
@@ -115,9 +109,11 @@ export const getPost = async (req, res, next) => {
 export const getUserPosts = async (req, res, next) => {
   try {
     const { userId } = req.params
-    const { limit, cursorDate } = parseCursorPagination(req.query)
-    const filter = { userId, ...(cursorDate ? { createdAt: { $lt: cursorDate } } : {}) }
-    const docs = await Post.find(filter).sort({ createdAt: -1 }).limit(limit + 1)
+    const { limit, cursorDate, sinceDate } = parseCursorPagination(req.query)
+    const filter = { userId, ...createdAtFilter({ sinceDate, cursorDate }) }
+    const docs = await Post.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(limit + 1)
     const { pageDocs, nextCursor, hasMore } = pageFromDocs(docs, limit)
     res.status(200).json({
       posts: await withAuthors(pageDocs),
@@ -463,10 +459,7 @@ export const updatePost = async (req, res, next) => {
     const description = hasDescriptionField ? req.body.description.trim() : (post.description || "").trim()
 
     const removeImageRaw = req.body.removeImage
-    const removeImage =
-      removeImageRaw === true ||
-      removeImageRaw === "true" ||
-      removeImageRaw === "1"
+    const removeImage = removeImageRaw === true || removeImageRaw === "true" || removeImageRaw === "1"
 
     let url = post.url || ""
     if (removeImage) {
@@ -520,11 +513,9 @@ export const savePost = async (req, res, next) => {
       return res.status(404).json({ error: "Post not found" })
     }
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { $addToSet: { savedPosts: post._id } },
-      { new: true }
-    ).select("savedPosts")
+    const user = await User.findByIdAndUpdate(userId, { $addToSet: { savedPosts: post._id } }, { new: true }).select(
+      "savedPosts"
+    )
 
     if (!user) {
       return res.status(401).json({ error: "Unauthenticated" })
@@ -556,11 +547,9 @@ export const unsavePost = async (req, res, next) => {
       return res.status(404).json({ error: "Post not found" })
     }
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { $pull: { savedPosts: post._id } },
-      { new: true }
-    ).select("savedPosts")
+    const user = await User.findByIdAndUpdate(userId, { $pull: { savedPosts: post._id } }, { new: true }).select(
+      "savedPosts"
+    )
 
     if (!user) {
       return res.status(401).json({ error: "Unauthenticated" })
@@ -638,7 +627,9 @@ export const getLikedPosts = async (req, res, next) => {
       [`likes.${userId}`]: true,
       ...(cursorDate ? { createdAt: { $lt: cursorDate } } : {}),
     }
-    const docs = await Post.find(filter).sort({ createdAt: -1 }).limit(limit + 1)
+    const docs = await Post.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(limit + 1)
     const { pageDocs, nextCursor, hasMore } = pageFromDocs(docs, limit)
     res.status(200).json({
       posts: await withAuthors(pageDocs),
@@ -666,7 +657,9 @@ export const getCommentedPosts = async (req, res, next) => {
       "comments.userId": String(userId),
       ...(cursorDate ? { createdAt: { $lt: cursorDate } } : {}),
     }
-    const docs = await Post.find(filter).sort({ createdAt: -1 }).limit(limit + 1)
+    const docs = await Post.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(limit + 1)
     const { pageDocs, nextCursor, hasMore } = pageFromDocs(docs, limit)
     res.status(200).json({
       posts: await withAuthors(pageDocs),

@@ -28,6 +28,7 @@ Full feature list for the current app, plus planned items for a later release.
 - Create text and/or image posts (emoji picker on the compose bar; image dropzone with preview)
 - Home feed with author name, avatar, and relative time
 - Infinite scroll on home feed and profile Posts tab (`?limit=&cursor=`)
+- Live feed updates on Home (Everyone / Following), profile Posts, and `/post/[postId]`: poll every 60s while the tab is visible; a **new posts** chip prepends others’ posts (no auto-insert); comments and author photos on visible posts merge in place; profile header photo refreshes silently
 - Home feed tabs: **Everyone** and **Following** (you + friends + people you follow)
 - Like / unlike posts (optimistic UI; rolls back on failure)
 - View who liked a post (click like count → list with profiles)
@@ -134,7 +135,6 @@ These are **not** in the current release. Planned for a later update:
 - Moderator role (between regular user and full admin)
 - Report / block user
 - Comment replies + @mentions (see below)
-- Live feed updates (see below)
 - Multiple images per post, image compression, and soft-delete posts
 - Messaging / DMs / chat (see below) - sidebar tab exists as a placeholder
 - Groups - create/join communities with their own feed (sidebar placeholder)
@@ -172,10 +172,6 @@ A   Comment
 ```
 
 So: comment A → children B, C, D in one column. Reply to C still lands under D as another child of A, not pushed further right.
-
-### Live feed updates
-
-**Not in this release.** Opening Home, a profile, or a post loads that snapshot once. New posts, comments, and profile photos from other people do not appear until you refresh or navigate. A later update will show those changes without a manual refresh. The delivery method (periodic refetch vs realtime) is not decided yet.
 
 ### Messaging / DMs
 

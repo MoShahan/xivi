@@ -11,28 +11,14 @@ import {
   WorkOutlineOutlined,
   X,
 } from "@mui/icons-material"
-import {
-  alpha,
-  Box,
-  Button,
-  Chip,
-  Divider,
-  IconButton,
-  Link,
-  Tooltip,
-  Typography,
-  useTheme,
-} from "@mui/material"
+import { alpha, Box, Button, Chip, Divider, IconButton, Link, Tooltip, Typography, useTheme } from "@mui/material"
 import { usePathname, useRouter } from "next/navigation"
 
 import { useAppSelector } from "@/app/hooks"
 import { api } from "@/lib/api"
 import { getErrorMessage } from "@/lib/errors"
-import {
-  DEFAULT_AVATAR_COLOR,
-  DEFAULT_COVER_COLOR,
-  normalizeProfileColor,
-} from "@/lib/profileColors"
+import { startLiveFeedPoll } from "@/lib/liveFeed"
+import { DEFAULT_AVATAR_COLOR, DEFAULT_COVER_COLOR, normalizeProfileColor } from "@/lib/profileColors"
 import { SOCIAL_NETWORKS, type SocialNetwork, socialProfileUrl } from "@/lib/social"
 import { formatJoinedDate } from "@/lib/time"
 import { useFeatureFlags } from "@/providers/FeatureFlagsProvider"
@@ -145,6 +131,30 @@ const UserWidget = ({ userId, url, isOwnProfile: isOwnProfileProp }: UserWidgetP
     }
   }, [userId])
 
+  useEffect(() => {
+    if (!userId) return
+
+    let cancelled = false
+    const stop = startLiveFeedPoll(() => {
+      void (async () => {
+        try {
+          const { data } = await api.get<User>(`/users/${userId}`)
+          if (!cancelled) {
+            setFetched(data)
+            setProfileError(null)
+          }
+        } catch {
+          // Silent refresh keeps last known profile.
+        }
+      })()
+    })
+
+    return () => {
+      cancelled = true
+      stop()
+    }
+  }, [userId])
+
   const user = useMemo(() => {
     if (!fetched || !sameUserId(fetched._id, userId)) return null
     if (isOwnProfile && loggedInUser && sameUserId(loggedInUser._id, userId)) {
@@ -178,7 +188,8 @@ const UserWidget = ({ userId, url, isOwnProfile: isOwnProfileProp }: UserWidgetP
   // Already on this profile (own `/profile` or `/profile/:id`) - don't re-navigate.
   const alreadyOnThisProfile =
     Boolean(userId) &&
-    (pathname === `/profile/${userId}` || (isOwnProfile && (pathname === "/profile" || pathname === `/profile/${userId}`)))
+    (pathname === `/profile/${userId}` ||
+      (isOwnProfile && (pathname === "/profile" || pathname === `/profile/${userId}`)))
 
   const handleGoToProfile = () => {
     if (!userId || alreadyOnThisProfile) return
@@ -210,11 +221,7 @@ const UserWidget = ({ userId, url, isOwnProfile: isOwnProfileProp }: UserWidgetP
 
   const displayUrl = url || user.picturePath || ""
   const friendCount =
-    typeof user.friendCount === "number"
-      ? user.friendCount
-      : Array.isArray(user.friends)
-        ? user.friends.length
-        : 0
+    typeof user.friendCount === "number" ? user.friendCount : Array.isArray(user.friends) ? user.friends.length : 0
   const followerCount = typeof user.followerCount === "number" ? user.followerCount : 0
   const followingCount =
     typeof user.followingCount === "number"

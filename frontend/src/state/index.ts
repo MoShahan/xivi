@@ -30,10 +30,7 @@ export const authSlice = createSlice({
     setMode: (state, action: PayloadAction<"light" | "dark">) => {
       state.mode = action.payload
     },
-    setLogin: (
-      state,
-      action: PayloadAction<{ user: User; accessToken: string; refreshToken: string }>
-    ) => {
+    setLogin: (state, action: PayloadAction<{ user: User; accessToken: string; refreshToken: string }>) => {
       state.user = sanitizeUser(action.payload.user)
       state.accessToken = action.payload.accessToken
       state.refreshToken = action.payload.refreshToken
@@ -95,6 +92,13 @@ export const authSlice = createSlice({
       const id = String(action.payload.post._id)
       state.posts = [action.payload.post, ...state.posts.filter(p => String(p._id) !== id)]
     },
+    prependPosts: (state, action: PayloadAction<{ posts: Post[] }>) => {
+      const incoming = action.payload.posts
+      if (!incoming.length) return
+      const incomingIds = new Set(incoming.map(post => String(post._id)))
+      const rest = state.posts.filter(post => !incomingIds.has(String(post._id)))
+      state.posts = [...incoming, ...rest]
+    },
     appendPosts: (state, action: PayloadAction<{ posts: Post[] }>) => {
       const seen = new Set(state.posts.map(p => String(p._id)))
       for (const post of action.payload.posts) {
@@ -135,6 +139,7 @@ export const {
   setPost,
   setPosts,
   prependPost,
+  prependPosts,
   appendPosts,
   removePost,
   setLogout,

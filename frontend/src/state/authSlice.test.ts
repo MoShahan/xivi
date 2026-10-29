@@ -2,14 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import type { Post, User } from "@/types/models"
 
-import reducer, {
-  prependPost,
-  setFriends,
-  setLogin,
-  setLogout,
-  setPost,
-  setPosts,
-} from "./index"
+import reducer, { prependPost, prependPosts, setFriends, setLogin, setLogout, setPost, setPosts } from "./index"
 
 const baseUser: User = {
   _id: "u1",
@@ -23,11 +16,14 @@ const baseUser: User = {
 
 describe("authSlice", () => {
   it("setLogin stores user and tokens and strips password if present", () => {
-    const state = reducer(undefined, setLogin({
-      user: { ...baseUser, password: "secret" } as User & { password?: string },
-      accessToken: "a",
-      refreshToken: "r",
-    }))
+    const state = reducer(
+      undefined,
+      setLogin({
+        user: { ...baseUser, password: "secret" } as User & { password?: string },
+        accessToken: "a",
+        refreshToken: "r",
+      })
+    )
     expect(state.accessToken).toBe("a")
     expect(state.refreshToken).toBe("r")
     expect(state.user?._id).toBe("u1")
@@ -35,11 +31,14 @@ describe("authSlice", () => {
   })
 
   it("setLogout clears session and posts", () => {
-    let state = reducer(undefined, setLogin({
-      user: baseUser,
-      accessToken: "a",
-      refreshToken: "r",
-    }))
+    let state = reducer(
+      undefined,
+      setLogin({
+        user: baseUser,
+        accessToken: "a",
+        refreshToken: "r",
+      })
+    )
     state = reducer(state, setPosts({ posts: [{ _id: "p1" } as Post] }))
     state = reducer(state, setLogout())
     expect(state.user).toBeNull()
@@ -48,11 +47,14 @@ describe("authSlice", () => {
   })
 
   it("setFriends updates the logged-in user friends list", () => {
-    let state = reducer(undefined, setLogin({
-      user: baseUser,
-      accessToken: "a",
-      refreshToken: "r",
-    }))
+    let state = reducer(
+      undefined,
+      setLogin({
+        user: baseUser,
+        accessToken: "a",
+        refreshToken: "r",
+      })
+    )
     state = reducer(
       state,
       setFriends({
@@ -83,5 +85,14 @@ describe("authSlice", () => {
     state = reducer(state, prependPost({ post: { ...post, description: "again" } }))
     expect(state.posts).toHaveLength(1)
     expect(state.posts[0].description).toBe("again")
+  })
+
+  it("prependPosts inserts a newest-first batch and dedupes", () => {
+    const older = { _id: "old", description: "old", userId: "u1", likes: {}, comments: [] } as Post
+    const a = { _id: "a", description: "a", userId: "u1", likes: {}, comments: [] } as Post
+    const b = { _id: "b", description: "b", userId: "u1", likes: {}, comments: [] } as Post
+    let state = reducer(undefined, setPosts({ posts: [older, a] }))
+    state = reducer(state, prependPosts({ posts: [b, a] }))
+    expect(state.posts.map(p => p._id)).toEqual(["b", "a", "old"])
   })
 })

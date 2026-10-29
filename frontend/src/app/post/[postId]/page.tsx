@@ -10,7 +10,9 @@ import AppShell from "@/components/AppShell"
 import PostWidget from "@/components/PostWidget"
 import { api } from "@/lib/api"
 import { getErrorMessage } from "@/lib/errors"
+import { hasOptimisticComments, startLiveFeedPoll } from "@/lib/liveFeed"
 import { setPost } from "@/state"
+import { store } from "@/state/store"
 import type { Post } from "@/types/models"
 
 type PostPageProps = {
@@ -59,37 +61,63 @@ const PostPage = ({ params }: PostPageProps) => {
     }
   }, [postId, accessToken, dispatch])
 
+  useEffect(() => {
+    if (!accessToken || !postId || status !== "ready") return
+
+    let cancelled = false
+    const stop = startLiveFeedPoll(() => {
+      void (async () => {
+        try {
+          const local = store.getState().posts.find(item => String(item._id) === String(postId))
+          if (hasOptimisticComments(local)) return
+          const { data } = await api.get<Post>(`/posts/${postId}`)
+          if (cancelled) return
+          dispatch(setPost({ post: data }))
+        } catch (err: unknown) {
+          if (cancelled) return
+          const statusCode = axios.isAxiosError(err) ? err.response?.status : undefined
+          if (statusCode === 404 || statusCode === 400) {
+            setStatus("notfound")
+          }
+        }
+      })()
+    })
+
+    return () => {
+      cancelled = true
+      stop()
+    }
+  }, [accessToken, postId, status, dispatch])
+
   return (
     <AppShell narrow>
-        {status === "loading" && (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 6 }} role="status" aria-live="polite">
-            <CircularProgress size={36} />
-          </Box>
-        )}
+      {status === "loading" && (
+        <Box sx={{ display: "flex", justifyContent: "center", py: 6 }} role="status" aria-live="polite">
+          <CircularProgress size={36} />
+        </Box>
+      )}
 
-        {status === "notfound" && (
-          <Box sx={{ textAlign: "center", py: 4 }}>
-            <Typography sx={{ color: theme.palette.neutral.medium, mb: 2 }}>Post not found.</Typography>
-            <Button onClick={() => router.push("/home")} variant="contained">
-              Back to home
-            </Button>
-          </Box>
-        )}
+      {status === "notfound" && (
+        <Box sx={{ textAlign: "center", py: 4 }}>
+          <Typography sx={{ color: theme.palette.neutral.medium, mb: 2 }}>Post not found.</Typography>
+          <Button onClick={() => router.push("/home")} variant="contained">
+            Back to home
+          </Button>
+        </Box>
+      )}
 
-        {status === "error" && (
-          <Box sx={{ textAlign: "center", py: 4 }}>
-            <Typography sx={{ color: "error.main", mb: 2 }} role="alert">
-              {errorMsg || "Something went wrong."}
-            </Typography>
-            <Button onClick={() => router.push("/home")} variant="outlined">
-              Back to home
-            </Button>
-          </Box>
-        )}
+      {status === "error" && (
+        <Box sx={{ textAlign: "center", py: 4 }}>
+          <Typography sx={{ color: "error.main", mb: 2 }} role="alert">
+            {errorMsg || "Something went wrong."}
+          </Typography>
+          <Button onClick={() => router.push("/home")} variant="outlined">
+            Back to home
+          </Button>
+        </Box>
+      )}
 
-        {status === "ready" && post && (
-          <PostWidget post={post} onDeleted={() => router.push("/home")} />
-        )}
+      {status === "ready" && post && <PostWidget post={post} onDeleted={() => router.push("/home")} />}
     </AppShell>
   )
 }
