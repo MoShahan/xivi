@@ -61,10 +61,7 @@ export function parseLikersPagination(query = {}) {
   const rawPage = Number.parseInt(String(query.page ?? "1"), 10)
   const rawLimit = Number.parseInt(String(query.limit ?? String(DEFAULT_LIKERS_LIMIT)), 10)
   const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1
-  const limit = Math.min(
-    MAX_LIKERS_LIMIT,
-    Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : DEFAULT_LIKERS_LIMIT
-  )
+  const limit = Math.min(MAX_LIKERS_LIMIT, Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : DEFAULT_LIKERS_LIMIT)
   return { page, limit, skip: (page - 1) * limit }
 }
 
@@ -73,8 +70,9 @@ export function parseLikersPagination(query = {}) {
  * @param {string[]} ids
  * @param {{ page: number, limit: number, skip: number }} pagination
  */
-export async function resolveLikersPage(ids, pagination) {
-  const unique = [...new Set((ids || []).map(String).filter(Boolean))]
+export async function resolveLikersPage(ids, pagination, options = {}) {
+  const hide = new Set((options.hideUserIds || []).map(String).filter(Boolean))
+  const unique = [...new Set((ids || []).map(String).filter(id => id && !hide.has(id)))]
   const total = unique.length
   const { page, limit, skip } = pagination
   const slice = unique.slice(skip, skip + limit)
@@ -129,8 +127,10 @@ function formatComment(comment, byId) {
  * Attach author snapshot (`user`) to each post and comment authors.
  * `Post.userId` is a string, not a ref.
  * @param {import("mongoose").Document[] | object[]} posts
+ * @param {{ hideUserIds?: string[] }} [options]
  */
-export async function withAuthors(posts) {
+export async function withAuthors(posts, options = {}) {
+  const hideSet = new Set((options.hideUserIds || []).map(String).filter(Boolean))
   const list = (Array.isArray(posts) ? posts : []).map(p => (p?.toObject ? p.toObject() : { ...p }))
   if (list.length === 0) return []
 
@@ -138,7 +138,10 @@ export async function withAuthors(posts) {
   for (const post of list) {
     if (post.userId) ids.add(String(post.userId))
     for (const c of post.comments || []) {
-      if (c && typeof c === "object" && c.userId) ids.add(String(c.userId))
+      if (c && typeof c === "object" && c.userId) {
+        const cid = String(c.userId)
+        if (!hideSet.has(cid)) ids.add(cid)
+      }
     }
   }
 
@@ -150,10 +153,15 @@ export async function withAuthors(posts) {
 
   return list.map(post => {
     const author = byId[String(post.userId)]
+    const comments = (post.comments || []).filter(c => {
+      if (typeof c === "string") return true
+      const uid = c?.userId ? String(c.userId) : ""
+      return !uid || !hideSet.has(uid)
+    })
     return {
       ...post,
       likes: serializeLikes(post.likes),
-      comments: (post.comments || []).map(c => formatComment(c, byId)),
+      comments: comments.map(c => formatComment(c, byId)),
       user: authorSnapshot(author),
     }
   })

@@ -47,6 +47,34 @@ export type User = {
   viewedProfile?: number
   /** Account creation time (ISO). */
   createdAt?: string
+  /** Present on GET /users/:id when the viewer blocked this person (limited payload). */
+  blockedByMe?: boolean
+  /** People the signed-in user has blocked (own profile only). */
+  blockedCount?: number
+}
+
+export type BlockReason =
+  | "harassment"
+  | "bullying"
+  | "hate_speech"
+  | "offensive"
+  | "spam"
+  | "impersonation"
+  | "fake_account"
+  | "dont_want"
+  | "other"
+
+export type BlockedUser = Friend & {
+  reason: BlockReason
+  customReason?: string
+  blockedAt?: string
+}
+
+export type PaginatedBlocks = {
+  users: BlockedUser[]
+  nextCursor: string | null
+  hasMore: boolean
+  total: number
 }
 
 /** Paginated people list (`/users/:id/friends|followers|following`). */
@@ -57,6 +85,7 @@ export type PaginatedPeople = {
       isFollowing: boolean
       outgoingRequestId: string | null
       incomingRequestId: string | null
+      blockedByMe?: boolean
     }
   })[]
   nextCursor: string | null
@@ -82,6 +111,7 @@ export type DiscoverUser = {
     isFollowing: boolean
     outgoingRequestId: string | null
     incomingRequestId: string | null
+    blockedByMe?: boolean
   }
 }
 

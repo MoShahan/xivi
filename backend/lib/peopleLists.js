@@ -2,9 +2,18 @@ import mongoose from "mongoose"
 
 import User from "../models/User.js"
 
+import { getHiddenUserIds } from "./blocks.js"
 import { formatFriend, toFriendId } from "./friends.js"
 import { DEFAULT_AVATAR_COLOR } from "./profileColors.js"
 import { getRelationshipsMap } from "./relationships.js"
+
+const EMPTY_REL = {
+  isFriend: false,
+  isFollowing: false,
+  outgoingRequestId: null,
+  incomingRequestId: null,
+  blockedByMe: false,
+}
 
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 30
@@ -17,10 +26,7 @@ const CARD_SELECT = "_id firstName lastName occupation location picturePath avat
  */
 export function parsePeoplePagination(query = {}) {
   const rawLimit = Number.parseInt(String(query.limit ?? String(DEFAULT_LIMIT)), 10)
-  const limit = Math.min(
-    MAX_LIMIT,
-    Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : DEFAULT_LIMIT
-  )
+  const limit = Math.min(MAX_LIMIT, Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : DEFAULT_LIMIT)
 
   const cursor = typeof query.cursor === "string" ? query.cursor.trim() : ""
   let cursorId = null
@@ -89,12 +95,7 @@ export async function resolvePeopleCards(ids, viewerId) {
       picturePath: u.picturePath || "",
       avatarColor: u.avatarColor || DEFAULT_AVATAR_COLOR,
     }
-    const rel = relMap[id] || {
-      isFriend: false,
-      isFollowing: false,
-      outgoingRequestId: null,
-      incomingRequestId: null,
-    }
+    const rel = relMap[id] || { ...EMPTY_REL }
     return { ...card, relationship: rel }
   })
 }
@@ -104,18 +105,27 @@ export async function resolvePeopleCards(ids, viewerId) {
  * @param {string} targetId
  * @param {{ limit: number, cursorId: string | null }} pagination
  * @param {string} viewerId
+ * @param {{ skipIncoming?: boolean }} [options]
  */
-export async function listFollowersPage(targetId, pagination, viewerId) {
+export async function listFollowersPage(targetId, pagination, viewerId, options = {}) {
   const { limit, cursorId } = pagination
+  const hidden = await getHiddenUserIds(viewerId, { skipIncoming: options.skipIncoming === true })
   const baseFilter = { following: targetId, isActive: { $ne: false } }
+  if (hidden.length) {
+    baseFilter._id = { $nin: hidden }
+  }
 
   const filter = { ...baseFilter }
   if (cursorId) {
-    filter._id = { $gt: cursorId }
+    filter._id = { ...(filter._id || {}), $gt: cursorId }
   }
 
   const [docs, total] = await Promise.all([
-    User.find(filter).select(CARD_SELECT).sort({ _id: 1 }).limit(limit + 1).lean(),
+    User.find(filter)
+      .select(CARD_SELECT)
+      .sort({ _id: 1 })
+      .limit(limit + 1)
+      .lean(),
     User.countDocuments(baseFilter),
   ])
 
@@ -131,12 +141,7 @@ export async function listFollowersPage(targetId, pagination, viewerId) {
   const users = pageDocs.map(u => {
     const id = String(u._id)
     const card = formatFriend(u)
-    const rel = relMap[id] || {
-      isFriend: false,
-      isFollowing: false,
-      outgoingRequestId: null,
-      incomingRequestId: null,
-    }
+    const rel = relMap[id] || { ...EMPTY_REL }
     return { ...card, relationship: rel }
   })
 

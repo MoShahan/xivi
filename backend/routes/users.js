@@ -1,5 +1,6 @@
 import express from "express"
 
+import { blockUser, listMyBlocks, unblockUser } from "../controllers/blocks.js"
 import {
   acceptFriendRequest,
   cancelFriendRequest,
@@ -57,39 +58,18 @@ router.delete(
   requireObjectId("requestId"),
   cancelFriendRequest
 )
-router.delete(
-  "/me/friends/:friendId",
-  verifyAccessToken,
-  authWriteLimiter,
-  requireObjectId("friendId"),
-  unfriend
-)
+router.delete("/me/friends/:friendId", verifyAccessToken, authWriteLimiter, requireObjectId("friendId"), unfriend)
 router.get("/me/following", verifyAccessToken, listFollowing)
+router.get("/me/blocks", verifyAccessToken, listMyBlocks)
 
-router.post(
-  "/:id/deactivate",
-  verifyAccessToken,
-  requireAdmin,
-  requireObjectId("id"),
-  deactivateUser
-)
-router.post(
-  "/:id/reactivate",
-  verifyAccessToken,
-  requireAdmin,
-  requireObjectId("id"),
-  reactivateUser
-)
+router.post("/:id/deactivate", verifyAccessToken, requireAdmin, requireObjectId("id"), deactivateUser)
+router.post("/:id/reactivate", verifyAccessToken, requireAdmin, requireObjectId("id"), reactivateUser)
 
-router.post(
-  "/:id/friend-requests",
-  verifyAccessToken,
-  authCreateLimiter,
-  requireObjectId("id"),
-  sendFriendRequest
-)
+router.post("/:id/friend-requests", verifyAccessToken, authCreateLimiter, requireObjectId("id"), sendFriendRequest)
 router.post("/:id/follow", verifyAccessToken, authWriteLimiter, requireObjectId("id"), followUser)
 router.delete("/:id/follow", verifyAccessToken, authWriteLimiter, requireObjectId("id"), unfollowUser)
+router.post("/:id/block", verifyAccessToken, authWriteLimiter, requireObjectId("id"), blockUser)
+router.delete("/:id/block", verifyAccessToken, authWriteLimiter, requireObjectId("id"), unblockUser)
 router.get("/:id/relationship", verifyAccessToken, requireObjectId("id"), getUserRelationship)
 
 router.get("/:id/friends", verifyAccessToken, requireObjectId("id"), getUserFriends)

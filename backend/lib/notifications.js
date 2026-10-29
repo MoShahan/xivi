@@ -1,5 +1,7 @@
 import Notification from "../models/Notification.js"
 
+import { isBlockedEitherWay } from "./blocks.js"
+
 /**
  * Create a notification unless actor === recipient.
  * Like / friend_request notifications are deduped (D3) so toggle spam does not flood the inbox.
@@ -10,6 +12,7 @@ export async function createNotification({ recipientId, actorId, type, postId = 
   try {
     if (!recipientId || !actorId || !type) return
     if (String(recipientId) === String(actorId)) return
+    if (await isBlockedEitherWay(recipientId, actorId)) return
 
     const doc = {
       recipient: recipientId,

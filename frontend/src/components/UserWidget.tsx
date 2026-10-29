@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react"
 import {
+  Block,
   CalendarMonthOutlined,
   Facebook,
   Instagram,
@@ -11,7 +12,23 @@ import {
   WorkOutlineOutlined,
   X,
 } from "@mui/icons-material"
-import { alpha, Box, Button, Chip, Divider, IconButton, Link, Tooltip, Typography, useTheme } from "@mui/material"
+import {
+  alpha,
+  Box,
+  Button,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Divider,
+  IconButton,
+  Link,
+  Tooltip,
+  Typography,
+  useTheme,
+} from "@mui/material"
 import { usePathname, useRouter } from "next/navigation"
 
 import { useAppSelector } from "@/app/hooks"
@@ -26,6 +43,8 @@ import { useToast } from "@/providers/ToastProvider"
 import type { PeopleListTab, User } from "@/types/models"
 import { sameUserId } from "@/types/models"
 
+import BlockedUsersModal from "./BlockedUsersModal"
+import BlockUserDialog from "./BlockUserDialog"
 import EditProfileDialog from "./EditProfileDialog"
 import EmptyState from "./EmptyState"
 import FlexBetween from "./FlexBetween"
@@ -41,6 +60,7 @@ type UserWidgetProps = {
   url: string
   /** When set by the profile page, preferred over id comparison. */
   isOwnProfile?: boolean
+  onUserLoaded?: (user: User | null) => void
 }
 
 const SOCIAL_ICONS: Record<SocialNetwork, React.ReactNode> = {
@@ -50,7 +70,7 @@ const SOCIAL_ICONS: Record<SocialNetwork, React.ReactNode> = {
   instagram: <Instagram fontSize="small" />,
 }
 
-const UserWidget = ({ userId, url, isOwnProfile: isOwnProfileProp }: UserWidgetProps) => {
+const UserWidget = ({ userId, url, isOwnProfile: isOwnProfileProp, onUserLoaded }: UserWidgetProps) => {
   const router = useRouter()
   const pathname = usePathname()
   const loggedInUser = useAppSelector(state => state.user)
@@ -75,6 +95,10 @@ const UserWidget = ({ userId, url, isOwnProfile: isOwnProfileProp }: UserWidgetP
   const [editOpen, setEditOpen] = useState(false)
   const [modBusy, setModBusy] = useState(false)
   const [peopleModalTab, setPeopleModalTab] = useState<PeopleListTab | null>(null)
+  const [blockOpen, setBlockOpen] = useState(false)
+  const [blockedListOpen, setBlockedListOpen] = useState(false)
+  const [unblockOpen, setUnblockOpen] = useState(false)
+  const [unblockBusy, setUnblockBusy] = useState(false)
   const { enabled } = useFeatureFlags()
   const canEditProfile = enabled("profileEdit")
 
@@ -88,11 +112,13 @@ const UserWidget = ({ userId, url, isOwnProfile: isOwnProfileProp }: UserWidgetP
         }
         const { data } = await api.get<User>(`/users/${userId}`)
         setFetched(data)
+        onUserLoaded?.(data)
         setProfileError(null)
       } catch (err: unknown) {
         // Silent refresh keeps last known profile; full load surfaces the error.
         if (!opts?.silent) {
           setProfileError(getErrorMessage(err, "Couldn’t load this profile"))
+          onUserLoaded?.(null)
         }
       } finally {
         if (!opts?.silent) setProfileLoading(false)
@@ -115,11 +141,13 @@ const UserWidget = ({ userId, url, isOwnProfile: isOwnProfileProp }: UserWidgetP
         const { data } = await api.get<User>(`/users/${userId}`)
         if (!cancelled) {
           setFetched(data)
+          onUserLoaded?.(data)
           setProfileError(null)
         }
       } catch (err: unknown) {
         if (!cancelled) {
           setFetched(null)
+          onUserLoaded?.(null)
           setProfileError(getErrorMessage(err, "Couldn’t load this profile"))
         }
       } finally {
@@ -129,7 +157,7 @@ const UserWidget = ({ userId, url, isOwnProfile: isOwnProfileProp }: UserWidgetP
     return () => {
       cancelled = true
     }
-  }, [userId])
+  }, [userId, onUserLoaded])
 
   useEffect(() => {
     if (!userId) return
@@ -141,6 +169,7 @@ const UserWidget = ({ userId, url, isOwnProfile: isOwnProfileProp }: UserWidgetP
           const { data } = await api.get<User>(`/users/${userId}`)
           if (!cancelled) {
             setFetched(data)
+            onUserLoaded?.(data)
             setProfileError(null)
           }
         } catch {
@@ -153,7 +182,7 @@ const UserWidget = ({ userId, url, isOwnProfile: isOwnProfileProp }: UserWidgetP
       cancelled = true
       stop()
     }
-  }, [userId])
+  }, [userId, onUserLoaded])
 
   const user = useMemo(() => {
     if (!fetched || !sameUserId(fetched._id, userId)) return null
@@ -176,6 +205,8 @@ const UserWidget = ({ userId, url, isOwnProfile: isOwnProfileProp }: UserWidgetP
         friendCount: fetched.friendCount ?? loggedInUser.friendCount,
         followerCount: fetched.followerCount ?? loggedInUser.followerCount,
         followingCount: fetched.followingCount ?? loggedInUser.followingCount,
+        blockedCount: fetched.blockedCount ?? loggedInUser.blockedCount,
+        blockedByMe: fetched.blockedByMe,
         role: loggedInUser.role ?? fetched.role,
         isActive: loggedInUser.isActive ?? fetched.isActive,
         // Prefer API value so visit counts stay current after others view the profile.
@@ -266,8 +297,44 @@ const UserWidget = ({ userId, url, isOwnProfile: isOwnProfileProp }: UserWidgetP
         {isOwnProfile ? null : (
           <Box sx={{ position: "absolute", top: 8, right: 8, zIndex: 2 }}>
             <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 0.75 }}>
-              <RelationshipActions userId={userId} onCover onChanged={refreshProfile} />
-              {viewerIsAdmin && user.role !== "admin" ? (
+              {user.blockedByMe ? (
+                <Button
+                  size="small"
+                  variant="contained"
+                  onClick={() => setUnblockOpen(true)}
+                  sx={{
+                    textTransform: "none",
+                    fontWeight: 600,
+                    fontSize: "0.75rem",
+                    bgcolor: theme => alpha(theme.palette.common.white, 0.94),
+                    color: "primary.main",
+                    "&:hover": { bgcolor: "common.white" },
+                  }}
+                >
+                  Unblock
+                </Button>
+              ) : (
+                <>
+                  <RelationshipActions userId={userId} onCover onChanged={refreshProfile} />
+                  <Button
+                    size="small"
+                    variant="contained"
+                    startIcon={<Block sx={{ fontSize: "1rem" }} />}
+                    onClick={() => setBlockOpen(true)}
+                    sx={{
+                      textTransform: "none",
+                      fontWeight: 600,
+                      fontSize: "0.75rem",
+                      bgcolor: theme => alpha(theme.palette.common.white, 0.94),
+                      color: "error.main",
+                      "&:hover": { bgcolor: "common.white" },
+                    }}
+                  >
+                    Block
+                  </Button>
+                </>
+              )}
+              {!user.blockedByMe && viewerIsAdmin && user.role !== "admin" ? (
                 <Button
                   size="small"
                   color={user.isActive === false ? "primary" : "error"}
@@ -408,6 +475,11 @@ const UserWidget = ({ userId, url, isOwnProfile: isOwnProfileProp }: UserWidgetP
                 />
               ) : null}
             </Box>
+            {user.blockedByMe ? (
+              <Typography variant="body2" sx={{ color: medium, mt: 1, maxWidth: "36ch" }}>
+                You blocked this person. Unblock them to see their profile and posts again.
+              </Typography>
+            ) : null}
             {isOwnProfile && canEditProfile ? (
               <Button
                 size="small"
@@ -425,129 +497,150 @@ const UserWidget = ({ userId, url, isOwnProfile: isOwnProfileProp }: UserWidgetP
                 Edit profile
               </Button>
             ) : null}
-            <Box
-              sx={{
-                display: "flex",
-                flexWrap: "wrap",
-                alignItems: "center",
-                gap: { xs: 1.25, sm: 1.75 },
-                mt: 0.35,
-              }}
-              role="group"
-              aria-label="Connection counts"
-            >
-              {(
-                [
-                  {
-                    key: "friends" as const,
-                    count: friendCount,
-                    singular: "friend",
-                    plural: "friends",
-                  },
-                  {
-                    key: "followers" as const,
-                    count: followerCount,
-                    singular: "follower",
-                    plural: "followers",
-                  },
-                  {
-                    key: "following" as const,
-                    count: followingCount,
-                    singular: "following",
-                    plural: "following",
-                  },
-                ] as const
-              ).map(stat => (
-                <Typography
-                  key={stat.key}
-                  component="button"
-                  type="button"
-                  variant="body2"
-                  onClick={() => setPeopleModalTab(stat.key)}
-                  aria-label={`View ${stat.count} ${stat.count === 1 ? stat.singular : stat.plural}`}
-                  sx={{ ...statButtonSx, color: medium, fontWeight: 500 }}
-                >
-                  <Box component="span" sx={{ color: dark, fontWeight: 700, mr: 0.4 }}>
-                    {stat.count}
-                  </Box>
-                  {stat.count === 1 ? stat.singular : stat.plural}
-                </Typography>
-              ))}
-            </Box>
+            {user.blockedByMe ? null : (
+              <Box
+                sx={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                  gap: { xs: 1.25, sm: 1.75 },
+                  mt: 0.35,
+                }}
+                role="group"
+                aria-label="Connection counts"
+              >
+                {(
+                  [
+                    {
+                      key: "friends" as const,
+                      count: friendCount,
+                      singular: "friend",
+                      plural: "friends",
+                    },
+                    {
+                      key: "followers" as const,
+                      count: followerCount,
+                      singular: "follower",
+                      plural: "followers",
+                    },
+                    {
+                      key: "following" as const,
+                      count: followingCount,
+                      singular: "following",
+                      plural: "following",
+                    },
+                  ] as const
+                ).map(stat => (
+                  <Typography
+                    key={stat.key}
+                    component="button"
+                    type="button"
+                    variant="body2"
+                    onClick={() => setPeopleModalTab(stat.key)}
+                    aria-label={`View ${stat.count} ${stat.count === 1 ? stat.singular : stat.plural}`}
+                    sx={{ ...statButtonSx, color: medium, fontWeight: 500 }}
+                  >
+                    <Box component="span" sx={{ color: dark, fontWeight: 700, mr: 0.4 }}>
+                      {stat.count}
+                    </Box>
+                    {stat.count === 1 ? stat.singular : stat.plural}
+                  </Typography>
+                ))}
+                {isOwnProfile ? (
+                  <Typography
+                    component="button"
+                    type="button"
+                    variant="body2"
+                    onClick={() => setBlockedListOpen(true)}
+                    aria-label={`View ${user.blockedCount ?? 0} blocked ${(user.blockedCount ?? 0) === 1 ? "person" : "people"}`}
+                    sx={{ ...statButtonSx, color: medium, fontWeight: 500 }}
+                  >
+                    <Box component="span" sx={{ color: dark, fontWeight: 700, mr: 0.4 }}>
+                      {user.blockedCount ?? 0}
+                    </Box>
+                    blocked
+                  </Typography>
+                ) : null}
+              </Box>
+            )}
           </Box>
         </Box>
 
-        <Divider />
-
-        <Box sx={{ py: "0.7rem", display: "flex", flexDirection: "column", gap: "0.35rem" }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: "0.55rem" }}>
-            <LocationOnOutlined sx={{ fontSize: "1.05rem", color: main }} />
-            <Typography variant="body2" sx={{ color: medium }}>
-              {user.location?.trim() || "-"}
-            </Typography>
-          </Box>
-          <Box sx={{ display: "flex", alignItems: "center", gap: "0.55rem" }}>
-            <WorkOutlineOutlined sx={{ fontSize: "1.05rem", color: main }} />
-            <Typography variant="body2" sx={{ color: medium }}>
-              {user.occupation?.trim() || "-"}
-            </Typography>
-          </Box>
-          {formatJoinedDate(user.createdAt) ? (
-            <Box sx={{ display: "flex", alignItems: "center", gap: "0.55rem" }}>
-              <CalendarMonthOutlined sx={{ fontSize: "1.05rem", color: main }} />
-              <Typography variant="body2" sx={{ color: medium }}>
-                {formatJoinedDate(user.createdAt)}
-              </Typography>
-            </Box>
-          ) : null}
-        </Box>
-
-        <Divider />
-
-        <Box sx={{ py: "0.7rem" }}>
-          <FlexBetween>
-            <Typography variant="body2" sx={{ color: medium }}>
-              Profile visits
-            </Typography>
-            <Typography variant="body2" sx={{ color: main, fontWeight: 600 }}>
-              {user.viewedProfile || 0}
-            </Typography>
-          </FlexBetween>
-        </Box>
-
-        {activeSocials.length > 0 ? (
+        {user.blockedByMe ? null : (
           <>
             <Divider />
-            <Box sx={{ pt: "0.75rem", display: "flex", flexWrap: "wrap", gap: 0.75 }}>
-              {activeSocials.map(item =>
-                item.href ? (
-                  <Tooltip key={item.key} title={`${item.label}: @${item.handle}`}>
-                    <IconButton
-                      component={Link}
-                      href={item.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      size="small"
-                      aria-label={`${item.label} profile`}
-                      sx={{
-                        color: main,
-                        border: `1px solid ${theme.palette.divider}`,
-                        borderRadius: 2,
-                        "&:hover": {
-                          color: palette.primary.main,
-                          borderColor: alpha(palette.primary.main, 0.35),
-                          bgcolor: alpha(palette.primary.main, 0.06),
-                        },
-                      }}
-                    >
-                      {SOCIAL_ICONS[item.key]}
-                    </IconButton>
-                  </Tooltip>
-                ) : null
-              )}
+
+            <Box sx={{ py: "0.7rem", display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: "0.55rem" }}>
+                <LocationOnOutlined sx={{ fontSize: "1.05rem", color: main }} />
+                <Typography variant="body2" sx={{ color: medium }}>
+                  {user.location?.trim() || "-"}
+                </Typography>
+              </Box>
+              <Box sx={{ display: "flex", alignItems: "center", gap: "0.55rem" }}>
+                <WorkOutlineOutlined sx={{ fontSize: "1.05rem", color: main }} />
+                <Typography variant="body2" sx={{ color: medium }}>
+                  {user.occupation?.trim() || "-"}
+                </Typography>
+              </Box>
+              {formatJoinedDate(user.createdAt) ? (
+                <Box sx={{ display: "flex", alignItems: "center", gap: "0.55rem" }}>
+                  <CalendarMonthOutlined sx={{ fontSize: "1.05rem", color: main }} />
+                  <Typography variant="body2" sx={{ color: medium }}>
+                    {formatJoinedDate(user.createdAt)}
+                  </Typography>
+                </Box>
+              ) : null}
             </Box>
+
+            <Divider />
+
+            <Box sx={{ py: "0.7rem" }}>
+              <FlexBetween>
+                <Typography variant="body2" sx={{ color: medium }}>
+                  Profile visits
+                </Typography>
+                <Typography variant="body2" sx={{ color: main, fontWeight: 600 }}>
+                  {user.viewedProfile || 0}
+                </Typography>
+              </FlexBetween>
+            </Box>
+
+            {activeSocials.length > 0 ? (
+              <>
+                <Divider />
+                <Box sx={{ pt: "0.75rem", display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+                  {activeSocials.map(item =>
+                    item.href ? (
+                      <Tooltip key={item.key} title={`${item.label}: @${item.handle}`}>
+                        <IconButton
+                          component={Link}
+                          href={item.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          size="small"
+                          aria-label={`${item.label} profile`}
+                          sx={{
+                            color: main,
+                            border: `1px solid ${theme.palette.divider}`,
+                            borderRadius: 2,
+                            "&:hover": {
+                              color: palette.primary.main,
+                              borderColor: alpha(palette.primary.main, 0.35),
+                              bgcolor: alpha(palette.primary.main, 0.06),
+                            },
+                          }}
+                        >
+                          {SOCIAL_ICONS[item.key]}
+                        </IconButton>
+                      </Tooltip>
+                    ) : null
+                  )}
+                </Box>
+              </>
+            ) : null}
           </>
-        ) : null}
+        )}
       </Box>
 
       {isOwnProfile ? (
@@ -572,6 +665,69 @@ const UserWidget = ({ userId, url, isOwnProfile: isOwnProfileProp }: UserWidgetP
           onRelationshipChanged={refreshProfile}
         />
       ) : null}
+
+      {isOwnProfile ? (
+        <BlockedUsersModal
+          open={blockedListOpen}
+          onClose={() => setBlockedListOpen(false)}
+          onChanged={refreshProfile}
+        />
+      ) : (
+        <>
+          <BlockUserDialog
+            key={`${userId}-${blockOpen ? "open" : "closed"}`}
+            open={blockOpen}
+            onClose={() => setBlockOpen(false)}
+            userId={userId}
+            userName={`${user.firstName} ${user.lastName}`.trim()}
+            onBlocked={() => loadProfile()}
+          />
+          <Dialog
+            open={unblockOpen}
+            onClose={() => (unblockBusy ? undefined : setUnblockOpen(false))}
+            aria-labelledby="profile-unblock-title"
+          >
+            <DialogTitle id="profile-unblock-title">
+              Unblock {user.firstName} {user.lastName}?
+            </DialogTitle>
+            <DialogContent>
+              <DialogContentText>
+                You’ll be able to see each other’s posts, comments, and profiles again. You will not automatically
+                become friends or follow each other.
+              </DialogContentText>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setUnblockOpen(false)} disabled={unblockBusy} sx={{ textTransform: "none" }}>
+                Cancel
+              </Button>
+              <Button
+                color="primary"
+                variant="contained"
+                disabled={unblockBusy}
+                autoFocus
+                sx={{ textTransform: "none", fontWeight: 700 }}
+                onClick={() => {
+                  void (async () => {
+                    setUnblockBusy(true)
+                    try {
+                      await api.delete(`/users/${userId}/block`)
+                      success(`${user.firstName} ${user.lastName} is unblocked`)
+                      setUnblockOpen(false)
+                      loadProfile()
+                    } catch (err: unknown) {
+                      toastError(getErrorMessage(err, "Couldn’t unblock this person"))
+                    } finally {
+                      setUnblockBusy(false)
+                    }
+                  })()
+                }}
+              >
+                {unblockBusy ? "Unblocking…" : "Unblock"}
+              </Button>
+            </DialogActions>
+          </Dialog>
+        </>
+      )}
     </WidgetWrapper>
   )
 }

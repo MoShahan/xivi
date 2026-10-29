@@ -79,7 +79,9 @@ function CommentThreadMockup() {
         border: `1px dashed ${theme.palette.divider}`,
       }}
     >
-      <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.06em", color: "text.secondary", mb: 1.25 }}>
+      <Typography
+        sx={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.06em", color: "text.secondary", mb: 1.25 }}
+      >
         PREVIEW · ONE-LEVEL REPLIES
       </Typography>
       <Box sx={{ display: "flex", flexDirection: "column", gap: 1.15 }}>
@@ -131,8 +133,8 @@ const ITEMS: RoadmapItem[] = [
     icon: <GavelOutlined />,
   },
   {
-    title: "Report and block",
-    summary: "Report a person or block them so you have clearer tools when something feels off.",
+    title: "Report",
+    summary: "Report a person so moderators can review harassment, spam, or other problems.",
     icon: <Block />,
   },
   {
@@ -159,7 +161,8 @@ const ITEMS: RoadmapItem[] = [
   },
   {
     title: "Richer posts",
-    summary: "Several images on one post, smarter compression, and a soft-delete so a post can leave the feed without a hard wipe.",
+    summary:
+      "Several images on one post, smarter compression, and a soft-delete so a post can leave the feed without a hard wipe.",
     icon: <ImageOutlined />,
   },
   {
@@ -234,8 +237,8 @@ const ComingSoonPage = () => {
       >
         <Upcoming sx={{ color: "primary.main", mt: 0.15, fontSize: "1.35rem" }} />
         <Typography sx={{ color: "text.secondary", lineHeight: 1.65, fontSize: "0.95rem" }}>
-          These are planned directions, not a ship date. If you need one of them sooner, or you have an idea
-          that is not listed, write to us - we read product mail.
+          These are planned directions, not a ship date. If you need one of them sooner, or you have an idea that is not
+          listed, write to us - we read product mail.
         </Typography>
       </Box>
 
@@ -312,11 +315,7 @@ const ComingSoonPage = () => {
                 {item.details ? (
                   <Box component="ul" sx={{ m: 0, mt: 1.15, pl: 2.25, color: "text.secondary" }}>
                     {item.details.map(line => (
-                      <Typography
-                        key={line}
-                        component="li"
-                        sx={{ fontSize: "0.85rem", lineHeight: 1.55, mb: 0.4 }}
-                      >
+                      <Typography key={line} component="li" sx={{ fontSize: "0.85rem", lineHeight: 1.55, mb: 0.4 }}>
                         {line}
                       </Typography>
                     ))}
@@ -348,8 +347,8 @@ const ComingSoonPage = () => {
           </Typography>
         </Box>
         <Typography sx={{ color: "text.secondary", lineHeight: 1.65, mb: 2, maxWidth: 560 }}>
-          If a planned feature is urgent for you, or you have a better idea that is not on this list, tell
-          us. A short note with your account email is enough.
+          If a planned feature is urgent for you, or you have a better idea that is not on this list, tell us. A short
+          note with your account email is enough.
         </Typography>
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.25, alignItems: "center" }}>
           <Button

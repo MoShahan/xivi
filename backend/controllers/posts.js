@@ -1,3 +1,4 @@
+import { assertNotBlocked, assertVisibleUser, excludeHiddenAuthors, hiddenUserIdsForRequest } from "../lib/blocks.js"
 import { assertFeatureEnabled } from "../lib/features.js"
 import { uploadImageBuffer } from "../lib/imagekit.js"
 import { createNotification } from "../lib/notifications.js"
@@ -6,6 +7,10 @@ import { COMMENTS_PER_POST_MAX, graphemeLength, POST_DESCRIPTION_MAX } from "../
 import { likesMapKeys, parseLikersPagination, resolveLikersPage, withAuthors } from "../lib/posts.js"
 import Post from "../models/Post.js"
 import User from "../models/User.js"
+
+async function presentPosts(req, posts) {
+  return withAuthors(posts, { hideUserIds: await hiddenUserIdsForRequest(req) })
+}
 
 export const createPost = async (req, res, next) => {
   try {
@@ -34,7 +39,7 @@ export const createPost = async (req, res, next) => {
 
     const newPost = new Post({ description, userId, url, likes: {}, comments: [] })
     await newPost.save()
-    const [formatted] = await withAuthors([newPost])
+    const [formatted] = await presentPosts(req, [newPost])
     res.status(201).json({ post: formatted })
   } catch (e) {
     if (e.message?.includes("IMAGEKIT_PRIVATE_KEY")) {
@@ -62,19 +67,24 @@ export const getFeed = async (req, res, next) => {
     const { limit, cursorDate, sinceDate } = parseCursorPagination(req.query)
     const filter = createdAtFilter({ sinceDate, cursorDate })
 
+    const hidden = await hiddenUserIdsForRequest(req)
+
     if (scope === "friends") {
       const me = await User.findById(userId).select("friends following")
       if (!me) {
         return res.status(401).json({ error: "Unauthenticated" })
       }
+      const hideSet = new Set(hidden)
       const authorIds = [
         ...new Set([
           String(userId),
           ...(me.friends || []).map(id => String(id)),
           ...(me.following || []).map(id => String(id)),
         ]),
-      ]
+      ].filter(id => id === String(userId) || !hideSet.has(id))
       filter.userId = { $in: authorIds }
+    } else {
+      excludeHiddenAuthors(filter, hidden)
     }
 
     const docs = await Post.find(filter)
@@ -82,7 +92,7 @@ export const getFeed = async (req, res, next) => {
       .limit(limit + 1)
     const { pageDocs, nextCursor, hasMore } = pageFromDocs(docs, limit)
     res.status(200).json({
-      posts: await withAuthors(pageDocs),
+      posts: await withAuthors(pageDocs, { hideUserIds: hidden }),
       nextCursor,
       hasMore,
       scope,
@@ -99,7 +109,8 @@ export const getPost = async (req, res, next) => {
     if (!post) {
       return res.status(404).json({ error: "Post not found" })
     }
-    const [formatted] = await withAuthors([post])
+    await assertVisibleUser(req, post.userId, "Post not found")
+    const [formatted] = await presentPosts(req, [post])
     res.status(200).json(formatted)
   } catch (e) {
     next(e)
@@ -109,6 +120,7 @@ export const getPost = async (req, res, next) => {
 export const getUserPosts = async (req, res, next) => {
   try {
     const { userId } = req.params
+    await assertVisibleUser(req, userId)
     const { limit, cursorDate, sinceDate } = parseCursorPagination(req.query)
     const filter = { userId, ...createdAtFilter({ sinceDate, cursorDate }) }
     const docs = await Post.find(filter)
@@ -116,7 +128,7 @@ export const getUserPosts = async (req, res, next) => {
       .limit(limit + 1)
     const { pageDocs, nextCursor, hasMore } = pageFromDocs(docs, limit)
     res.status(200).json({
-      posts: await withAuthors(pageDocs),
+      posts: await presentPosts(req, pageDocs),
       nextCursor,
       hasMore,
     })
@@ -140,6 +152,8 @@ export const likePost = async (req, res, next) => {
       return res.status(404).json({ error: "Post not found" })
     }
 
+    await assertNotBlocked(userId, post.userId)
+
     const likeKey = `likes.${userId}`
     const isLiked = Boolean(post.likes?.get?.(userId))
     let message = ""
@@ -158,7 +172,7 @@ export const likePost = async (req, res, next) => {
       })
     }
 
-    const [formatted] = await withAuthors([updatedPost])
+    const [formatted] = await presentPosts(req, [updatedPost])
 
     res.status(200).json({ message, updatedPost: formatted })
   } catch (e) {
@@ -178,8 +192,11 @@ export const getPostLikers = async (req, res, next) => {
       return res.status(404).json({ error: "Post not found" })
     }
 
+    await assertVisibleUser(req, post.userId, "Post not found")
     const pagination = parseLikersPagination(req.query)
-    const result = await resolveLikersPage(likesMapKeys(post.likes), pagination)
+    const result = await resolveLikersPage(likesMapKeys(post.likes), pagination, {
+      hideUserIds: await hiddenUserIdsForRequest(req),
+    })
     res.status(200).json(result)
   } catch (e) {
     next(e)
@@ -208,6 +225,7 @@ export const addComment = async (req, res, next) => {
     if (!post) {
       return res.status(404).json({ error: "Post not found" })
     }
+    await assertNotBlocked(userId, post.userId)
     if ((post.comments?.length || 0) >= COMMENTS_PER_POST_MAX) {
       return res.status(400).json({
         error: `This post has reached the maximum of ${COMMENTS_PER_POST_MAX} comments`,
@@ -226,7 +244,7 @@ export const addComment = async (req, res, next) => {
       commentId: added?._id ? String(added._id) : null,
     })
 
-    const [formatted] = await withAuthors([post])
+    const [formatted] = await presentPosts(req, [post])
     res.status(201).json({ updatedPost: formatted })
   } catch (e) {
     if (e.status === 403 && e.expose) {
@@ -255,6 +273,9 @@ export const likeComment = async (req, res, next) => {
     if (!comment) {
       return res.status(404).json({ error: "Comment not found" })
     }
+
+    await assertNotBlocked(userId, comment.userId)
+    await assertNotBlocked(userId, post.userId)
 
     if (!comment.likes) {
       comment.likes = new Map()
@@ -291,7 +312,7 @@ export const likeComment = async (req, res, next) => {
       return res.status(404).json({ error: "Comment not found" })
     }
 
-    const [formatted] = await withAuthors([updatedPost])
+    const [formatted] = await presentPosts(req, [updatedPost])
     res.status(200).json({ message, updatedPost: formatted })
   } catch (e) {
     next(e)
@@ -307,13 +328,16 @@ export const getCommentLikers = async (req, res, next) => {
       return res.status(404).json({ error: "Post not found" })
     }
 
+    await assertVisibleUser(req, post.userId, "Post not found")
     const comment = post.comments.id(commentId)
     if (!comment) {
       return res.status(404).json({ error: "Comment not found" })
     }
 
     const pagination = parseLikersPagination(req.query)
-    const result = await resolveLikersPage(likesMapKeys(comment.likes), pagination)
+    const result = await resolveLikersPage(likesMapKeys(comment.likes), pagination, {
+      hideUserIds: await hiddenUserIdsForRequest(req),
+    })
     res.status(200).json(result)
   } catch (e) {
     next(e)
@@ -359,7 +383,7 @@ export const editComment = async (req, res, next) => {
     post.markModified("comments")
     await post.save()
 
-    const [formatted] = await withAuthors([post])
+    const [formatted] = await presentPosts(req, [post])
     res.status(200).json({ message: "Comment updated", updatedPost: formatted })
   } catch (e) {
     next(e)
@@ -397,7 +421,7 @@ export const deleteComment = async (req, res, next) => {
     comment.deleteOne()
     await post.save()
 
-    const [formatted] = await withAuthors([post])
+    const [formatted] = await presentPosts(req, [post])
     res.status(200).json({ message: "Comment deleted", updatedPost: formatted })
   } catch (e) {
     next(e)
@@ -487,7 +511,7 @@ export const updatePost = async (req, res, next) => {
     }
     await post.save()
 
-    const [formatted] = await withAuthors([post])
+    const [formatted] = await presentPosts(req, [post])
     res.status(200).json({ message: "Post updated", updatedPost: formatted })
   } catch (e) {
     if (e.message?.includes("IMAGEKIT_PRIVATE_KEY")) {
@@ -508,10 +532,12 @@ export const savePost = async (req, res, next) => {
     await assertFeatureEnabled(req, "postsSave")
 
     const { postId } = req.params
-    const post = await Post.findById(postId).select("_id")
+    const post = await Post.findById(postId).select("_id userId")
     if (!post) {
       return res.status(404).json({ error: "Post not found" })
     }
+
+    await assertNotBlocked(userId, post.userId)
 
     const user = await User.findByIdAndUpdate(userId, { $addToSet: { savedPosts: post._id } }, { new: true }).select(
       "savedPosts"
@@ -596,13 +622,17 @@ export const getSavedPosts = async (req, res, next) => {
       return res.status(200).json({ posts: [], nextCursor: null, hasMore: false })
     }
 
-    const posts = await Post.find({ _id: { $in: sliceIds } })
+    const hidden = await hiddenUserIdsForRequest(req)
+    const posts = await Post.find({
+      _id: { $in: sliceIds },
+      ...(hidden.length ? { userId: { $nin: hidden } } : {}),
+    })
     const byId = Object.fromEntries(posts.map(p => [String(p._id), p]))
     const ordered = sliceIds.map(id => byId[id]).filter(Boolean)
     const nextCursor = hasMore ? sliceIds[sliceIds.length - 1] : null
 
     res.status(200).json({
-      posts: await withAuthors(ordered),
+      posts: await withAuthors(ordered, { hideUserIds: hidden }),
       nextCursor,
       hasMore,
     })
@@ -623,16 +653,18 @@ export const getLikedPosts = async (req, res, next) => {
     }
 
     const { limit, cursorDate } = parseCursorPagination(req.query)
+    const hidden = await hiddenUserIdsForRequest(req)
     const filter = {
       [`likes.${userId}`]: true,
       ...(cursorDate ? { createdAt: { $lt: cursorDate } } : {}),
     }
+    excludeHiddenAuthors(filter, hidden)
     const docs = await Post.find(filter)
       .sort({ createdAt: -1 })
       .limit(limit + 1)
     const { pageDocs, nextCursor, hasMore } = pageFromDocs(docs, limit)
     res.status(200).json({
-      posts: await withAuthors(pageDocs),
+      posts: await withAuthors(pageDocs, { hideUserIds: hidden }),
       nextCursor,
       hasMore,
     })
@@ -653,16 +685,18 @@ export const getCommentedPosts = async (req, res, next) => {
     }
 
     const { limit, cursorDate } = parseCursorPagination(req.query)
+    const hidden = await hiddenUserIdsForRequest(req)
     const filter = {
       "comments.userId": String(userId),
       ...(cursorDate ? { createdAt: { $lt: cursorDate } } : {}),
     }
+    excludeHiddenAuthors(filter, hidden)
     const docs = await Post.find(filter)
       .sort({ createdAt: -1 })
       .limit(limit + 1)
     const { pageDocs, nextCursor, hasMore } = pageFromDocs(docs, limit)
     res.status(200).json({
-      posts: await withAuthors(pageDocs),
+      posts: await withAuthors(pageDocs, { hideUserIds: hidden }),
       nextCursor,
       hasMore,
     })

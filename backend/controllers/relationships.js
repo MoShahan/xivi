@@ -1,11 +1,8 @@
+import { assertNotBlocked, hiddenUserIdsForRequest, isBlockedByMe } from "../lib/blocks.js"
 import { assertFeatureEnabled } from "../lib/features.js"
 import { formatFriendsList, toFriendId } from "../lib/friends.js"
 import { createNotification } from "../lib/notifications.js"
-import {
-  pageIdList,
-  parsePeoplePagination,
-  resolvePeopleCards,
-} from "../lib/peopleLists.js"
+import { pageIdList, parsePeoplePagination, resolvePeopleCards } from "../lib/peopleLists.js"
 import { DEFAULT_AVATAR_COLOR } from "../lib/profileColors.js"
 import { getRelationship, getRelationshipsMap } from "../lib/relationships.js"
 import FriendRequest from "../models/FriendRequest.js"
@@ -45,6 +42,11 @@ export const getUserRelationship = async (req, res, next) => {
     const target = await User.findById(id).select("_id")
     if (!target) return res.status(404).json({ msg: "User not found" })
 
+    const theyBlockedMe = await isBlockedByMe(id, authUserId)
+    if (theyBlockedMe && req.user?.role !== "admin") {
+      return res.status(404).json({ error: "User not found" })
+    }
+
     const relationship = await getRelationship(authUserId, id)
     res.status(200).json({ relationship })
   } catch (e) {
@@ -69,6 +71,8 @@ export const sendFriendRequest = async (req, res, next) => {
     if (!me || !them || them.isActive === false) {
       return res.status(404).json({ error: "User not found" })
     }
+
+    await assertNotBlocked(authUserId, toId)
 
     if ((me.friends || []).some(fid => toFriendId(fid) === String(toId))) {
       return res.status(409).json({ error: "Already friends" })
@@ -131,19 +135,23 @@ export const listFriendRequests = async (req, res, next) => {
     const boxRaw = typeof req.query.box === "string" ? req.query.box.trim().toLowerCase() : "incoming"
     const box = boxRaw === "outgoing" ? "outgoing" : "incoming"
 
-    const filter =
-      box === "outgoing"
-        ? { from: authUserId, status: "pending" }
-        : { to: authUserId, status: "pending" }
+    const filter = box === "outgoing" ? { from: authUserId, status: "pending" } : { to: authUserId, status: "pending" }
 
     const docs = await FriendRequest.find(filter).sort({ createdAt: -1 }).limit(50).lean()
-    const otherIds = docs.map(d => (box === "outgoing" ? d.to : d.from))
-    const users = await User.find({ _id: { $in: otherIds } }).select(ACTOR_SELECT).lean()
+    const hidden = new Set(await hiddenUserIdsForRequest(req))
+    const visibleDocs = docs.filter(d => {
+      const otherId = box === "outgoing" ? String(d.to) : String(d.from)
+      return !hidden.has(otherId)
+    })
+    const otherIds = visibleDocs.map(d => (box === "outgoing" ? d.to : d.from))
+    const users = await User.find({ _id: { $in: otherIds } })
+      .select(ACTOR_SELECT)
+      .lean()
     const byId = new Map(users.map(u => [String(u._id), u]))
 
     res.status(200).json({
       box,
-      requests: docs.map(d => {
+      requests: visibleDocs.map(d => {
         const other = box === "outgoing" ? byId.get(String(d.to)) : byId.get(String(d.from))
         return formatRequest(d, other)
       }),
@@ -159,7 +167,10 @@ export const countIncomingFriendRequests = async (req, res, next) => {
     const authUserId = req.user?.id
     if (!authUserId) return res.status(401).json({ error: "Unauthenticated" })
 
-    const count = await FriendRequest.countDocuments({ to: authUserId, status: "pending" })
+    const hidden = await hiddenUserIdsForRequest(req)
+    const countFilter = { to: authUserId, status: "pending" }
+    if (hidden.length) countFilter.from = { $nin: hidden }
+    const count = await FriendRequest.countDocuments(countFilter)
     res.status(200).json({ count })
   } catch (e) {
     next(e)
@@ -183,13 +194,12 @@ export const acceptFriendRequest = async (req, res, next) => {
       return res.status(403).json({ error: "Not allowed to accept this request" })
     }
 
-    const [me, them] = await Promise.all([
-      User.findById(authUserId),
-      User.findById(request.from),
-    ])
+    const [me, them] = await Promise.all([User.findById(authUserId), User.findById(request.from)])
     if (!me || !them || them.isActive === false) {
       return res.status(404).json({ error: "User not found" })
     }
+
+    await assertNotBlocked(authUserId, request.from)
 
     const fromId = String(request.from)
     const toId = String(authUserId)
@@ -327,6 +337,8 @@ export const followUser = async (req, res, next) => {
       return res.status(404).json({ error: "User not found" })
     }
 
+    await assertNotBlocked(authUserId, targetId)
+
     const already = (me.following || []).some(fid => toFriendId(fid) === String(targetId))
     if (!already) {
       me.following.push(them._id)
@@ -382,7 +394,9 @@ export const listFollowing = async (req, res, next) => {
     if (!me) return res.status(404).json({ msg: "User not found" })
 
     const pagination = parsePeoplePagination(req.query)
-    const page = pageIdList(me.following, pagination)
+    const hidden = new Set(await hiddenUserIdsForRequest(req))
+    const visibleIds = (me.following || []).filter(id => !hidden.has(String(id)))
+    const page = pageIdList(visibleIds, pagination)
     const users = await resolvePeopleCards(page.ids, authUserId)
 
     res.status(200).json({

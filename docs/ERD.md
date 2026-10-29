@@ -20,6 +20,8 @@ erDiagram
   POST ||--o{ NOTIFICATION : "postId (optional)"
   USER ||--o{ USER : "friends (mutual)"
   USER ||--o{ USER : "following (one-way)"
+  USER ||--o{ BLOCK : "blocker"
+  USER ||--o{ BLOCK : "blocked"
   USER ||--o{ POST : "savedPosts"
   USER ||--o| USER : "deactivatedBy"
   POST ||--|{ COMMENT : "embeds"
@@ -82,6 +84,16 @@ erDiagram
     date updatedAt
   }
 
+  BLOCK {
+    ObjectId _id PK
+    ObjectId blocker FK
+    ObjectId blocked FK
+    string reason "harassment|bullying|hate_speech|offensive|spam|impersonation|fake_account|dont_want|other"
+    string customReason
+    date createdAt
+    date updatedAt
+  }
+
   NOTIFICATION {
     ObjectId _id PK
     ObjectId recipient FK
@@ -99,12 +111,13 @@ erDiagram
 
 ## Collections
 
-| Collection | Model file | Notes |
-| ---------- | ---------- | ----- |
-| `users` | `backend/models/User.js` | Auth, profile, friends, following, saved posts |
-| `posts` | `backend/models/Post.js` | Feed content; comments embedded |
-| `friendrequests` | `backend/models/FriendRequest.js` | Pending/accepted/declined/cancelled requests |
-| `notifications` | `backend/models/Notification.js` | In-app bell notifications |
+| Collection       | Model file                        | Notes                                          |
+| ---------------- | --------------------------------- | ---------------------------------------------- |
+| `users`          | `backend/models/User.js`          | Auth, profile, friends, following, saved posts |
+| `posts`          | `backend/models/Post.js`          | Feed content; comments embedded                |
+| `friendrequests` | `backend/models/FriendRequest.js` | Pending/accepted/declined/cancelled requests   |
+| `blocks`         | `backend/models/Block.js`         | Blocker → blocked, with private reason         |
+| `notifications`  | `backend/models/Notification.js`  | In-app bell notifications                      |
 
 `Comment` is **not** a separate collection - it is an embedded subdocument array on `Post`.
 
@@ -112,15 +125,16 @@ erDiagram
 
 ## Relationship notes
 
-| Relationship | How it is stored |
-| ------------ | ---------------- |
-| Friends | Both users’ `friends` arrays (mutual) |
-| Following | Follower’s `following` array only (one-way) |
-| Post / comment likes | `Map` keyed by user id on the post or comment |
-| Saved posts | `User.savedPosts` → `Post` |
-| Friend request | `FriendRequest.from` / `.to` → `User` (unique pending pair index) |
-| Notification | `recipient` + `actor` → `User`; optional `postId` → `Post` |
-| Admin deactivate | `User.deactivatedBy` → `User` |
+| Relationship         | How it is stored                                                               |
+| -------------------- | ------------------------------------------------------------------------------ |
+| Friends              | Both users’ `friends` arrays (mutual)                                          |
+| Following            | Follower’s `following` array only (one-way)                                    |
+| Post / comment likes | `Map` keyed by user id on the post or comment                                  |
+| Saved posts          | `User.savedPosts` → `Post`                                                     |
+| Friend request       | `FriendRequest.from` / `.to` → `User` (unique pending pair index)              |
+| Block                | `Block.blocker` / `.blocked` → `User` (unique pair; API hides both directions) |
+| Notification         | `recipient` + `actor` → `User`; optional `postId` → `Post`                     |
+| Admin deactivate     | `User.deactivatedBy` → `User`                                                  |
 
 ---
 
@@ -128,4 +142,5 @@ erDiagram
 
 - **User:** unique `email`
 - **FriendRequest:** unique pending `(from, to)`; indexes on `(to, status, createdAt)` and `(from, status, createdAt)`
+- **Block:** unique `(blocker, blocked)`; indexes on `(blocker, createdAt)` and `blocked`
 - **Notification:** `recipient`; `(recipient, createdAt)`

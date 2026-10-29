@@ -54,6 +54,7 @@ Full feature list for the current app, plus planned items for a later release.
 - Friend-request activity also appears in the notifications bell
 - Separate **Follow** and **Friend** actions on profiles and Add people (icon-only in dense lists)
 - Profile header: clickable **friends / followers / following** counts → modal with tabs + infinite scroll (paginated APIs)
+- **Block user** (mutual hide): reason (harassment, bullying, hate speech, offensive, spam, impersonation, fake account, don’t want to see them, or other with custom text); unfriends and unfollows both ways; hides posts, comments, profiles, discover, likers, and notifications; blocked person sees a generic 404. Own profile **Blocked** count to review and unblock. Block from another profile, a post ⋮ menu, or a comment ⋮ menu.
 - **Find people** at `/people` (left rail / mobile drawer) with search + **infinite scroll**
 - Own profile (`/profile`) and other profiles (`/profile/[userId]`)
 - Edit own profile (name, location, occupation, avatar, social handles, avatar color, cover color)
@@ -133,7 +134,7 @@ These are **not** in the current release. Planned for a later update:
 - Private friend graphs - option to hide friends / followers / following **lists** from other users (counts may still show)
 - Separate admin SPA / dedicated admin host
 - Moderator role (between regular user and full admin)
-- Report / block user
+- Report user
 - Comment replies + @mentions (see below)
 - Multiple images per post, image compression, and soft-delete posts
 - Messaging / DMs / chat (see below) - sidebar tab exists as a placeholder

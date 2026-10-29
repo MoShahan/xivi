@@ -124,6 +124,23 @@ export const authSlice = createSlice({
       const id = String(action.payload.postId)
       state.posts = state.posts.filter(post => String(post._id) !== id)
     },
+    removePostsByUser: (state, action: PayloadAction<{ userId: string }>) => {
+      const uid = String(action.payload.userId)
+      state.posts = state.posts
+        .filter(post => String(post.userId) !== uid)
+        .map(post => ({
+          ...post,
+          comments: (post.comments || []).filter(comment => String(comment.userId) !== uid),
+        }))
+      if (state.user) {
+        if (state.user.following) {
+          state.user.following = state.user.following.filter(id => String(id) !== uid)
+        }
+        if (state.user.friends) {
+          state.user.friends = state.user.friends.filter(friend => String(friend._id ?? friend.id) !== uid)
+        }
+      }
+    },
   },
 })
 
@@ -142,6 +159,7 @@ export const {
   prependPosts,
   appendPosts,
   removePost,
+  removePostsByUser,
   setLogout,
 } = authSlice.actions
 

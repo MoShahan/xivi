@@ -1,22 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import {
-  Check,
-  HourglassEmpty,
-  PersonAddOutlined,
-  PersonRemoveOutlined,
-  RssFeed,
-} from "@mui/icons-material"
-import {
-  alpha,
-  Box,
-  Button,
-  CircularProgress,
-  IconButton,
-  Tooltip,
-  useTheme,
-} from "@mui/material"
+import { Check, HourglassEmpty, PersonAddOutlined, PersonRemoveOutlined, RssFeed } from "@mui/icons-material"
+import { alpha, Box, Button, CircularProgress, IconButton, Tooltip, useTheme } from "@mui/material"
 
 import { useAppDispatch, useAppSelector } from "@/app/hooks"
 import { api } from "@/lib/api"
@@ -46,6 +32,7 @@ function relFromInitial(initial?: Partial<UserRelationship> | null): UserRelatio
     outgoingRequestId: initial?.outgoingRequestId ?? null,
     incomingRequestId: initial?.incomingRequestId ?? null,
     isSelf: Boolean(initial?.isSelf),
+    blockedByMe: Boolean(initial?.blockedByMe),
   }
 }
 
@@ -141,9 +128,7 @@ const RelationshipActions = ({
   const refresh = useCallback(async () => {
     if (!userId || !loggedInId) return
     try {
-      const { data } = await api.get<{ relationship: UserRelationship }>(
-        `/users/${userId}/relationship`
-      )
+      const { data } = await api.get<{ relationship: UserRelationship }>(`/users/${userId}/relationship`)
       setRel(data.relationship)
     } catch {
       // keep last known
@@ -160,9 +145,7 @@ const RelationshipActions = ({
     let cancelled = false
     void (async () => {
       try {
-        const { data } = await api.get<{ relationship: UserRelationship }>(
-          `/users/${userId}/relationship`
-        )
+        const { data } = await api.get<{ relationship: UserRelationship }>(`/users/${userId}/relationship`)
         if (!cancelled) setRel(data.relationship)
       } catch {
         // keep last known
@@ -242,9 +225,7 @@ const RelationshipActions = ({
 
   const removeFriend = () =>
     run(async () => {
-      const { data } = await api.delete<{ message: string; friends: Friend[] }>(
-        `/users/me/friends/${userId}`
-      )
+      const { data } = await api.delete<{ message: string; friends: Friend[] }>(`/users/me/friends/${userId}`)
       dispatch(setFriends({ friends: data.friends }))
       success(data.message || "Friend removed")
       await refresh()
@@ -253,15 +234,11 @@ const RelationshipActions = ({
   const toggleFollow = () =>
     run(async () => {
       if (rel.isFollowing) {
-        const { data } = await api.delete<{ following: string[]; message: string }>(
-          `/users/${userId}/follow`
-        )
+        const { data } = await api.delete<{ following: string[]; message: string }>(`/users/${userId}/follow`)
         dispatch(setFollowing({ following: data.following }))
         success(data.message || "Unfollowed")
       } else {
-        const { data } = await api.post<{ following: string[]; message: string }>(
-          `/users/${userId}/follow`
-        )
+        const { data } = await api.post<{ following: string[]; message: string }>(`/users/${userId}/follow`)
         dispatch(setFollowing({ following: data.following }))
         success(data.message || "Following")
       }
@@ -270,11 +247,7 @@ const RelationshipActions = ({
 
   const followLabel = rel.isFollowing ? "Unfollow" : "Follow"
   const followTip = rel.isFollowing ? "Unfollow" : "Follow to see their posts in your feed"
-  const followIcon = rel.isFollowing ? (
-    <Check sx={{ fontSize: "1.1rem" }} />
-  ) : (
-    <RssFeed sx={{ fontSize: "1.1rem" }} />
-  )
+  const followIcon = rel.isFollowing ? <Check sx={{ fontSize: "1.1rem" }} /> : <RssFeed sx={{ fontSize: "1.1rem" }} />
   const followSurface = rel.isFollowing ? activeSurface : coverSurface
 
   if (dense) {
@@ -394,27 +367,27 @@ const RelationshipActions = ({
       }}
     >
       {canFollow ? (
-      <Tooltip title={followTip}>
-        <span>
-          <Button
-            size="small"
-            disabled={busy}
-            onClick={() => void toggleFollow()}
-            aria-label={followLabel}
-            aria-pressed={rel.isFollowing}
-            startIcon={
-              rel.isFollowing ? (
-                <Check sx={{ fontSize: "1rem !important" }} />
-              ) : (
-                <RssFeed sx={{ fontSize: "1rem !important" }} />
-              )
-            }
-            sx={{ ...chipBase, ...followSurface }}
-          >
-            {rel.isFollowing ? "Following" : "Follow"}
-          </Button>
-        </span>
-      </Tooltip>
+        <Tooltip title={followTip}>
+          <span>
+            <Button
+              size="small"
+              disabled={busy}
+              onClick={() => void toggleFollow()}
+              aria-label={followLabel}
+              aria-pressed={rel.isFollowing}
+              startIcon={
+                rel.isFollowing ? (
+                  <Check sx={{ fontSize: "1rem !important" }} />
+                ) : (
+                  <RssFeed sx={{ fontSize: "1rem !important" }} />
+                )
+              }
+              sx={{ ...chipBase, ...followSurface }}
+            >
+              {rel.isFollowing ? "Following" : "Follow"}
+            </Button>
+          </span>
+        </Tooltip>
       ) : null}
 
       {canFriend ? (

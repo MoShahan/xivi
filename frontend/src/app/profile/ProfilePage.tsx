@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useMemo } from "react"
+import React, { useCallback, useMemo, useState } from "react"
 import {
   BookmarkBorderOutlined,
   ChatBubbleOutlineOutlined,
@@ -11,11 +11,13 @@ import { Box, Tab, Tabs, useMediaQuery } from "@mui/material"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 import AppShell from "@/components/AppShell"
+import EmptyState from "@/components/EmptyState"
 import PostsWidget, { type PostsListKind } from "@/components/PostsWidget"
 import { segmentedTabsSx } from "@/components/segmentedTabsSx"
 import { ProfilePageSkeleton } from "@/components/skeletons"
 import UserWidget from "@/components/UserWidget"
 import { useFeatureFlags } from "@/providers/FeatureFlagsProvider"
+import type { User } from "@/types/models"
 import { sameUserId } from "@/types/models"
 
 import { useAppSelector } from "../hooks"
@@ -56,15 +58,21 @@ const ProfilePage = ({ id }: ProfilePageProps) => {
   const searchParams = useSearchParams()
   const { enabled } = useFeatureFlags()
   const canSave = enabled("postsSave")
+  const [loadedProfileId, setLoadedProfileId] = useState(id)
+  const [profileUser, setProfileUser] = useState<User | null>(null)
+  if (loadedProfileId !== id) {
+    setLoadedProfileId(id)
+    setProfileUser(null)
+  }
+  const handleUserLoaded = useCallback((user: User | null) => {
+    setProfileUser(user)
+  }, [])
 
   const profileId = id || loggedInUser?._id || ""
   // `/profile` (empty id) is always own; `/profile/:id` is own when ids match.
   const isOwnProfile = !id || sameUserId(id, loggedInUser?._id)
 
-  const visibleOwnTabs = useMemo(
-    () => OWN_TABS.filter(t => (t.value === "saved" ? canSave : true)),
-    [canSave]
-  )
+  const visibleOwnTabs = useMemo(() => OWN_TABS.filter(t => (t.value === "saved" ? canSave : true)), [canSave])
 
   const activeTab = useMemo(() => {
     if (!isOwnProfile) return "posts" as OwnTab
@@ -94,64 +102,70 @@ const ProfilePage = ({ id }: ProfilePageProps) => {
 
   return (
     <AppShell>
+      <Box
+        sx={{
+          gap: { xs: "1.15rem", md: "1.5rem" },
+          width: "100%",
+          display: isNonMobileScreens ? "flex" : "block",
+          alignItems: "flex-start",
+        }}
+      >
         <Box
           sx={{
-            gap: { xs: "1.15rem", md: "1.5rem" },
-            width: "100%",
-            display: isNonMobileScreens ? "flex" : "block",
-            alignItems: "flex-start",
+            flex: isNonMobileScreens ? "0 0 320px" : undefined,
+            width: isNonMobileScreens ? 320 : "100%",
+            maxWidth: "100%",
+            minWidth: 0,
           }}
         >
-          <Box
-            sx={{
-              flex: isNonMobileScreens ? "0 0 320px" : undefined,
-              width: isNonMobileScreens ? 320 : "100%",
-              maxWidth: "100%",
-              minWidth: 0,
-            }}
-          >
-            <UserWidget
-              url={isOwnProfile ? (loggedInUser?.picturePath ?? "") : ""}
-              userId={profileId}
-              isOwnProfile={isOwnProfile}
-            />
-          </Box>
-          <Box
-            sx={{
-              flex: isNonMobileScreens ? "1 1 auto" : undefined,
-              minWidth: 0,
-              width: "100%",
-              mt: isNonMobileScreens ? undefined : "1.25rem",
-            }}
-          >
-            {isOwnProfile ? (
-              <>
-                <Tabs
-                  value={activeTab}
-                  onChange={handleTabChange}
-                  variant="scrollable"
-                  scrollButtons="auto"
-                  aria-label="Profile content sections"
-                  sx={segmentedTabsSx}
-                >
-                  {visibleOwnTabs.map(tab => (
-                    <Tab
-                      key={tab.value}
-                      value={tab.value}
-                      label={tab.label}
-                      icon={tab.icon}
-                      iconPosition="start"
-                      disableRipple
-                    />
-                  ))}
-                </Tabs>
-                <PostsWidget key={activeList} list={activeList} userId={profileId} />
-              </>
-            ) : (
-              <PostsWidget list="authored" userId={profileId} />
-            )}
-          </Box>
+          <UserWidget
+            url={isOwnProfile ? (loggedInUser?.picturePath ?? "") : ""}
+            userId={profileId}
+            isOwnProfile={isOwnProfile}
+            onUserLoaded={handleUserLoaded}
+          />
         </Box>
+        <Box
+          sx={{
+            flex: isNonMobileScreens ? "1 1 auto" : undefined,
+            minWidth: 0,
+            width: "100%",
+            mt: isNonMobileScreens ? undefined : "1.25rem",
+          }}
+        >
+          {isOwnProfile ? (
+            <>
+              <Tabs
+                value={activeTab}
+                onChange={handleTabChange}
+                variant="scrollable"
+                scrollButtons="auto"
+                aria-label="Profile content sections"
+                sx={segmentedTabsSx}
+              >
+                {visibleOwnTabs.map(tab => (
+                  <Tab
+                    key={tab.value}
+                    value={tab.value}
+                    label={tab.label}
+                    icon={tab.icon}
+                    iconPosition="start"
+                    disableRipple
+                  />
+                ))}
+              </Tabs>
+              <PostsWidget key={activeList} list={activeList} userId={profileId} />
+            </>
+          ) : profileUser?.blockedByMe ? (
+            <EmptyState
+              title="You blocked this person"
+              description="Unblock them from the profile card if you want to see their posts again."
+            />
+          ) : profileUser ? (
+            <PostsWidget list="authored" userId={profileId} />
+          ) : null}
+        </Box>
+      </Box>
     </AppShell>
   )
 }

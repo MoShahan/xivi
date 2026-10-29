@@ -2,7 +2,16 @@ import { describe, expect, it } from "vitest"
 
 import type { Post, User } from "@/types/models"
 
-import reducer, { prependPost, prependPosts, setFriends, setLogin, setLogout, setPost, setPosts } from "./index"
+import reducer, {
+  prependPost,
+  prependPosts,
+  removePostsByUser,
+  setFriends,
+  setLogin,
+  setLogout,
+  setPost,
+  setPosts,
+} from "./index"
 
 const baseUser: User = {
   _id: "u1",
@@ -94,5 +103,49 @@ describe("authSlice", () => {
     let state = reducer(undefined, setPosts({ posts: [older, a] }))
     state = reducer(state, prependPosts({ posts: [b, a] }))
     expect(state.posts.map(p => p._id)).toEqual(["b", "a", "old"])
+  })
+
+  it("removePostsByUser drops their posts and comments and severs local graph", () => {
+    let state = reducer(
+      undefined,
+      setLogin({
+        user: {
+          ...baseUser,
+          following: ["u2"],
+          friends: [
+            {
+              _id: "u2",
+              firstName: "Bob",
+              lastName: "Friend",
+              occupation: "",
+              location: "",
+              picturePath: "",
+            },
+          ],
+        },
+        accessToken: "a",
+        refreshToken: "r",
+      })
+    )
+    state = reducer(
+      state,
+      setPosts({
+        posts: [
+          { _id: "p1", description: "theirs", userId: "u2", likes: {}, comments: [] } as Post,
+          {
+            _id: "p2",
+            description: "mine",
+            userId: "u1",
+            likes: {},
+            comments: [{ _id: "c1", userId: "u2", text: "hi" }],
+          } as Post,
+        ],
+      })
+    )
+    state = reducer(state, removePostsByUser({ userId: "u2" }))
+    expect(state.posts.map(p => p._id)).toEqual(["p2"])
+    expect(state.posts[0].comments).toEqual([])
+    expect(state.user?.following).toEqual([])
+    expect(state.user?.friends).toEqual([])
   })
 })

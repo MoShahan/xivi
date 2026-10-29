@@ -2,6 +2,7 @@
 
 import React, { useRef, useState } from "react"
 import {
+  BlockOutlined,
   Bookmark,
   BookmarkBorder,
   ChatBubbleOutlineOutlined,
@@ -41,7 +42,7 @@ import {
   Typography,
   useTheme,
 } from "@mui/material"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 
 import { useAppDispatch, useAppSelector } from "@/app/hooks"
 import { api, mediaUrl } from "@/lib/api"
@@ -63,6 +64,7 @@ import { useToast } from "@/providers/ToastProvider"
 import { removePost, setPost, setSavedPosts } from "@/state"
 import { type Post, sameUserId } from "@/types/models"
 
+import BlockUserDialog from "./BlockUserDialog"
 import EmojiPickerButton, { insertEmojiAtCursor } from "./EmojiPickerButton"
 import ExpandableText from "./ExpandableText"
 import FlexBetween from "./FlexBetween"
@@ -85,6 +87,7 @@ const COMMENTS_LOAD_STEP = 5
 const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
   const dispatch = useAppDispatch()
   const router = useRouter()
+  const pathname = usePathname()
   const user = useAppSelector(state => state.user)
   const { success, error: toastError, info } = useToast()
   const likes = post.likes ?? {}
@@ -107,6 +110,8 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
   const showEditPost = isOwnPost && canPostsEdit
   const showDeletePost = (isOwnPost && canPostsDelete) || isAdmin
   const canModeratePost = showEditPost || showDeletePost
+  const canBlockAuthor = Boolean(user?._id && !isOwnPost)
+  const showPostMenu = canModeratePost || canBlockAuthor
   const isSaved = Boolean(user?.savedPosts?.some(id => String(id) === String(post._id)))
 
   const theme = useTheme()
@@ -121,9 +126,7 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
   const [isSubmittingComment, setIsSubmittingComment] = useState(false)
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null)
   const [shareAnchor, setShareAnchor] = useState<null | HTMLElement>(null)
-  const [commentMenu, setCommentMenu] = useState<{ anchor: HTMLElement; commentId: string } | null>(
-    null
-  )
+  const [commentMenu, setCommentMenu] = useState<{ anchor: HTMLElement; commentId: string } | null>(null)
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
   const [editCommentText, setEditCommentText] = useState("")
   const [editCommentError, setEditCommentError] = useState<string | undefined>()
@@ -142,14 +145,14 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
   const [isSavingEditPost, setIsSavingEditPost] = useState(false)
   const [imageFailed, setImageFailed] = useState(false)
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [blockTarget, setBlockTarget] = useState<{ id: string; name: string } | null>(null)
   const editDescriptionInputRef = useRef<HTMLInputElement>(null)
   const commentInputRef = useRef<HTMLInputElement>(null)
   const editCommentInputRef = useRef<HTMLInputElement>(null)
   const likeInFlight = useRef(false)
   const commentLikeInFlight = useRef<Set<string>>(new Set())
 
-  const authorName =
-    [post.user?.firstName, post.user?.lastName].filter(Boolean).join(" ").trim() || "Unknown user"
+  const authorName = [post.user?.firstName, post.user?.lastName].filter(Boolean).join(" ").trim() || "Unknown user"
   const editCharCount = graphemeLength(editDescription)
   const editAtLimit = editCharCount >= POST_DESCRIPTION_MAX
 
@@ -176,12 +179,8 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
   const toggleSave = async () => {
     try {
       const { data } = isSaved
-        ? await api.delete<{ message: string; saved: boolean; savedPosts: string[] }>(
-            `/posts/${post._id}/save`
-          )
-        : await api.put<{ message: string; saved: boolean; savedPosts: string[] }>(
-            `/posts/${post._id}/save`
-          )
+        ? await api.delete<{ message: string; saved: boolean; savedPosts: string[] }>(`/posts/${post._id}/save`)
+        : await api.put<{ message: string; saved: boolean; savedPosts: string[] }>(`/posts/${post._id}/save`)
       dispatch(setSavedPosts({ savedPosts: data.savedPosts }))
       success(data.message || (data.saved ? "Post saved" : "Post unsaved"))
     } catch (err: unknown) {
@@ -333,10 +332,7 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
         formData.append("picture", editPicture)
       }
 
-      const { data } = await api.patch<{ message: string; updatedPost: Post }>(
-        `/posts/${post._id}`,
-        formData
-      )
+      const { data } = await api.patch<{ message: string; updatedPost: Post }>(`/posts/${post._id}`, formData)
       dispatch(setPost({ post: data.updatedPost }))
       setEditOpen(false)
       setEditPicture(null)
@@ -439,7 +435,7 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
         avatarSize="44px"
         showFriendButton={false}
         endAction={
-          canModeratePost ? (
+          showPostMenu ? (
             <>
               <Tooltip title="Post options">
                 <IconButton
@@ -464,6 +460,19 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
                       <EditOutlined fontSize="small" />
                     </ListItemIcon>
                     <ListItemText>Edit post</ListItemText>
+                  </MenuItem>
+                ) : null}
+                {canBlockAuthor ? (
+                  <MenuItem
+                    onClick={() => {
+                      setMenuAnchor(null)
+                      setBlockTarget({ id: String(post.userId), name: authorName })
+                    }}
+                  >
+                    <ListItemIcon>
+                      <BlockOutlined fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText>Block {authorName}</ListItemText>
                   </MenuItem>
                 ) : null}
                 {showDeletePost ? (
@@ -773,9 +782,7 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
               px: 0.25,
             }}
           >
-            {comments.length === 0
-              ? "Comments"
-              : `${comments.length} comment${comments.length === 1 ? "" : "s"}`}
+            {comments.length === 0 ? "Comments" : `${comments.length} comment${comments.length === 1 ? "" : "s"}`}
           </Typography>
 
           {comments.length === 0 ? (
@@ -828,14 +835,14 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
             >
               {comments.slice(0, visibleCommentCount).map((comment, index) => {
                 const name =
-                  [comment.user?.firstName, comment.user?.lastName].filter(Boolean).join(" ").trim() ||
-                  "User"
+                  [comment.user?.firstName, comment.user?.lastName].filter(Boolean).join(" ").trim() || "User"
                 const commentLikes = comment.likes ?? {}
                 const isCommentLiked = Boolean(user?._id && commentLikes[user._id])
                 const commentLikesCount = Object.keys(commentLikes).length
                 const isOwnComment = Boolean(comment._id && sameUserId(user?._id, comment.userId))
-                const canModerateComment =
-                  (isOwnComment && (canCommentsEdit || canCommentsDelete)) || isAdmin
+                const canModerateComment = (isOwnComment && (canCommentsEdit || canCommentsDelete)) || isAdmin
+                const canBlockCommenter = Boolean(user?._id && comment.userId && !isOwnComment)
+                const showCommentMenu = canModerateComment || canBlockCommenter
                 const isEditing = Boolean(comment._id && editingCommentId === comment._id)
                 return (
                   <Box
@@ -966,11 +973,7 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
                               <Typography
                                 component={commentLikesCount > 0 ? "button" : "span"}
                                 type={commentLikesCount > 0 ? "button" : undefined}
-                                onClick={
-                                  commentLikesCount > 0
-                                    ? () => setCommentLikersId(comment._id!)
-                                    : undefined
-                                }
+                                onClick={commentLikesCount > 0 ? () => setCommentLikersId(comment._id!) : undefined}
                                 aria-label={
                                   commentLikesCount > 0
                                     ? `View who liked this comment (${commentLikesCount})`
@@ -988,8 +991,7 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
                                   minWidth: "1.75ch",
                                   textAlign: "left",
                                   visibility: commentLikesCount > 0 ? "visible" : "hidden",
-                                  "&:hover":
-                                    commentLikesCount > 0 ? { textDecoration: "underline" } : undefined,
+                                  "&:hover": commentLikesCount > 0 ? { textDecoration: "underline" } : undefined,
                                 }}
                               >
                                 {commentLikesCount || 0}
@@ -1024,15 +1026,13 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
                           ) : (
                             <Box sx={{ minWidth: 40 }} aria-hidden />
                           )}
-                          {canModerateComment && comment._id && !isEditing ? (
+                          {showCommentMenu && comment._id && !isEditing ? (
                             <IconButton
                               size="small"
                               aria-label="Comment options"
                               aria-haspopup="true"
                               aria-expanded={commentMenu?.commentId === comment._id}
-                              onClick={e =>
-                                setCommentMenu({ anchor: e.currentTarget, commentId: comment._id! })
-                              }
+                              onClick={e => setCommentMenu({ anchor: e.currentTarget, commentId: comment._id! })}
                               sx={{ p: 0.3, color: medium, width: 28, height: 28 }}
                             >
                               <MoreVert sx={{ fontSize: "1.15rem" }} />
@@ -1075,10 +1075,7 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
                             }}
                           />
                           {editCommentError && (
-                            <Typography
-                              sx={{ color: "error.main", mt: 0.35, fontSize: "0.75rem" }}
-                              role="alert"
-                            >
+                            <Typography sx={{ color: "error.main", mt: 0.35, fontSize: "0.75rem" }} role="alert">
                               {editCommentError}
                             </Typography>
                           )}
@@ -1088,11 +1085,8 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
                                 dense
                                 disabled={isSavingEdit}
                                 onSelect={emoji =>
-                                  insertEmojiAtCursor(
-                                    editCommentInputRef.current,
-                                    editCommentText,
-                                    emoji,
-                                    next => setEditCommentText(truncateGraphemes(next, COMMENT_MAX))
+                                  insertEmojiAtCursor(editCommentInputRef.current, editCommentText, emoji, next =>
+                                    setEditCommentText(truncateGraphemes(next, COMMENT_MAX))
                                   )
                                 }
                               />
@@ -1141,11 +1135,7 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
             <Box sx={{ display: "flex", justifyContent: "center", py: 0.75, mb: 0.5 }}>
               <Button
                 size="small"
-                onClick={() =>
-                  setVisibleCommentCount(count =>
-                    Math.min(count + COMMENTS_LOAD_STEP, comments.length)
-                  )
-                }
+                onClick={() => setVisibleCommentCount(count => Math.min(count + COMMENTS_LOAD_STEP, comments.length))}
                 sx={{
                   textTransform: "none",
                   fontWeight: 600,
@@ -1172,6 +1162,12 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
               const menuIsOwn = Boolean(menuTarget && sameUserId(user?._id, menuTarget.userId))
               const showCommentEdit = menuIsOwn && canCommentsEdit
               const showCommentDelete = (menuIsOwn && canCommentsDelete) || isAdmin
+              const menuCommentName =
+                [menuTarget?.user?.firstName, menuTarget?.user?.lastName].filter(Boolean).join(" ").trim() ||
+                "this person"
+              const showCommentBlock = Boolean(
+                user?._id && menuTarget?.userId && !sameUserId(user?._id, menuTarget.userId)
+              )
               return (
                 <>
                   {showCommentEdit ? (
@@ -1184,6 +1180,19 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
                         <EditOutlined fontSize="small" />
                       </ListItemIcon>
                       <ListItemText>Edit</ListItemText>
+                    </MenuItem>
+                  ) : null}
+                  {showCommentBlock && menuTarget?.userId ? (
+                    <MenuItem
+                      onClick={() => {
+                        setCommentMenu(null)
+                        setBlockTarget({ id: String(menuTarget.userId), name: menuCommentName })
+                      }}
+                    >
+                      <ListItemIcon>
+                        <BlockOutlined fontSize="small" />
+                      </ListItemIcon>
+                      <ListItemText>Block {menuCommentName}</ListItemText>
                     </MenuItem>
                   ) : null}
                   {showCommentDelete ? (
@@ -1208,142 +1217,137 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
           </Menu>
 
           {canCommentsCreate ? (
-          <Box
-            component="form"
-            onSubmit={submitComment}
-            noValidate
-            sx={{
-              display: "flex",
-              alignItems: "flex-end",
-              gap: 1,
-              mt: comments.length === 0 ? 0 : 0.25,
-            }}
-          >
-            <Box sx={{ flexShrink: 0, mb: 0.35 }}>
-              <UserImage
-                image={user?.picturePath || ""}
-                name={user ? `${user.firstName} ${user.lastName}` : "You"}
-                size="34px"
-                bgColor={user?.avatarColor}
-              />
-            </Box>
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "flex-end",
-                  gap: 0.5,
-                  pl: 1.75,
-                  pr: 0.5,
-                  py: 0.4,
-                  minHeight: 44,
-                  borderRadius: "16px",
-                  bgcolor: theme =>
-                    theme.palette.mode === "dark"
-                      ? alpha(theme.palette.common.white, 0.06)
-                      : theme.palette.neutral.light,
-                  border: commentError
-                    ? `1px solid ${theme.palette.error.main}`
-                    : `1px solid ${theme.palette.divider}`,
-                  transition: "border-color 0.15s ease, box-shadow 0.15s ease",
-                  "&:focus-within": {
-                    borderColor: alpha(primary, 0.55),
-                    boxShadow: `0 0 0 3px ${alpha(primary, 0.12)}`,
-                  },
-                }}
-              >
-                <InputBase
-                  fullWidth
-                  multiline
-                  maxRows={6}
-                  inputRef={commentInputRef}
-                  placeholder="Add a comment…"
-                  inputProps={{ "aria-label": "Add a comment", "aria-invalid": Boolean(commentError) }}
-                  value={commentText}
-                  onChange={e => {
-                    setCommentText(truncateGraphemes(e.target.value, COMMENT_MAX))
-                    if (commentError) setCommentError(undefined)
-                  }}
-                  disabled={isSubmittingComment}
-                  sx={{
-                    flex: 1,
-                    minWidth: 0,
-                    py: 0.7,
-                    fontSize: "0.9rem",
-                    lineHeight: 1.45,
-                    "& textarea": {
-                      overflow: "auto !important",
-                    },
-                  }}
-                  onKeyDown={e => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault()
-                      const form = e.currentTarget.closest("form")
-                      if (form && !isSubmittingComment && commentText.trim()) {
-                        if (typeof form.requestSubmit === "function") form.requestSubmit()
-                        else form.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }))
-                      }
-                    }
-                  }}
+            <Box
+              component="form"
+              onSubmit={submitComment}
+              noValidate
+              sx={{
+                display: "flex",
+                alignItems: "flex-end",
+                gap: 1,
+                mt: comments.length === 0 ? 0 : 0.25,
+              }}
+            >
+              <Box sx={{ flexShrink: 0, mb: 0.35 }}>
+                <UserImage
+                  image={user?.picturePath || ""}
+                  name={user ? `${user.firstName} ${user.lastName}` : "You"}
+                  size="34px"
+                  bgColor={user?.avatarColor}
                 />
+              </Box>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Box
                   sx={{
                     display: "flex",
-                    alignItems: "center",
-                    gap: 0.25,
-                    flexShrink: 0,
-                    pb: 0.2,
+                    alignItems: "flex-end",
+                    gap: 0.5,
+                    pl: 1.75,
+                    pr: 0.5,
+                    py: 0.4,
+                    minHeight: 44,
+                    borderRadius: "16px",
+                    bgcolor: theme =>
+                      theme.palette.mode === "dark"
+                        ? alpha(theme.palette.common.white, 0.06)
+                        : theme.palette.neutral.light,
+                    border: commentError
+                      ? `1px solid ${theme.palette.error.main}`
+                      : `1px solid ${theme.palette.divider}`,
+                    transition: "border-color 0.15s ease, box-shadow 0.15s ease",
+                    "&:focus-within": {
+                      borderColor: alpha(primary, 0.55),
+                      boxShadow: `0 0 0 3px ${alpha(primary, 0.12)}`,
+                    },
                   }}
                 >
-                  {canEmoji ? (
-                    <EmojiPickerButton
-                      dense
-                      disabled={isSubmittingComment}
-                      onSelect={emoji =>
-                        insertEmojiAtCursor(
-                          commentInputRef.current,
-                          commentText,
-                          emoji,
-                          next => {
+                  <InputBase
+                    fullWidth
+                    multiline
+                    maxRows={6}
+                    inputRef={commentInputRef}
+                    placeholder="Add a comment…"
+                    inputProps={{ "aria-label": "Add a comment", "aria-invalid": Boolean(commentError) }}
+                    value={commentText}
+                    onChange={e => {
+                      setCommentText(truncateGraphemes(e.target.value, COMMENT_MAX))
+                      if (commentError) setCommentError(undefined)
+                    }}
+                    disabled={isSubmittingComment}
+                    sx={{
+                      flex: 1,
+                      minWidth: 0,
+                      py: 0.7,
+                      fontSize: "0.9rem",
+                      lineHeight: 1.45,
+                      "& textarea": {
+                        overflow: "auto !important",
+                      },
+                    }}
+                    onKeyDown={e => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault()
+                        const form = e.currentTarget.closest("form")
+                        if (form && !isSubmittingComment && commentText.trim()) {
+                          if (typeof form.requestSubmit === "function") form.requestSubmit()
+                          else form.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }))
+                        }
+                      }
+                    }}
+                  />
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 0.25,
+                      flexShrink: 0,
+                      pb: 0.2,
+                    }}
+                  >
+                    {canEmoji ? (
+                      <EmojiPickerButton
+                        dense
+                        disabled={isSubmittingComment}
+                        onSelect={emoji =>
+                          insertEmojiAtCursor(commentInputRef.current, commentText, emoji, next => {
                             setCommentText(truncateGraphemes(next, COMMENT_MAX))
                             if (commentError) setCommentError(undefined)
-                          }
-                        )
-                      }
-                    />
-                  ) : null}
-                  <Tooltip title="Post comment">
-                    <Box component="span" sx={{ display: "inline-flex" }}>
-                      <IconButton
-                        type="submit"
-                        size="small"
-                        disabled={isSubmittingComment || !commentText.trim()}
-                        aria-label="Post comment"
-                        sx={{
-                          color: theme.palette.common.white,
-                          bgcolor: primary,
-                          width: 32,
-                          height: 32,
-                          "&:hover": { bgcolor: theme.palette.primary.dark },
-                          "&.Mui-disabled": {
-                            bgcolor: alpha(primary, 0.35),
-                            color: alpha(theme.palette.common.white, 0.7),
-                          },
-                        }}
-                      >
-                        <SendRounded sx={{ fontSize: "1.05rem" }} />
-                      </IconButton>
-                    </Box>
-                  </Tooltip>
+                          })
+                        }
+                      />
+                    ) : null}
+                    <Tooltip title="Post comment">
+                      <Box component="span" sx={{ display: "inline-flex" }}>
+                        <IconButton
+                          type="submit"
+                          size="small"
+                          disabled={isSubmittingComment || !commentText.trim()}
+                          aria-label="Post comment"
+                          sx={{
+                            color: theme.palette.common.white,
+                            bgcolor: primary,
+                            width: 32,
+                            height: 32,
+                            "&:hover": { bgcolor: theme.palette.primary.dark },
+                            "&.Mui-disabled": {
+                              bgcolor: alpha(primary, 0.35),
+                              color: alpha(theme.palette.common.white, 0.7),
+                            },
+                          }}
+                        >
+                          <SendRounded sx={{ fontSize: "1.05rem" }} />
+                        </IconButton>
+                      </Box>
+                    </Tooltip>
+                  </Box>
                 </Box>
+                {commentError && (
+                  <Typography sx={{ color: "error.main", mt: 0.5, ml: 0.5, fontSize: "0.75rem" }} role="alert">
+                    {commentError}
+                  </Typography>
+                )}
               </Box>
-              {commentError && (
-                <Typography sx={{ color: "error.main", mt: 0.5, ml: 0.5, fontSize: "0.75rem" }} role="alert">
-                  {commentError}
-                </Typography>
-              )}
             </Box>
-          </Box>
           ) : comments.length === 0 ? (
             <Typography sx={{ color: medium, fontSize: "0.85rem", py: 1.25, textAlign: "center" }}>
               Commenting is temporarily disabled.
@@ -1360,9 +1364,7 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
               mt: 1,
               backgroundColor: theme.palette.neutral.light,
               borderRadius: "12px",
-              border: editError
-                ? `1px solid ${theme.palette.error.main}`
-                : `1px solid ${theme.palette.divider}`,
+              border: editError ? `1px solid ${theme.palette.error.main}` : `1px solid ${theme.palette.divider}`,
               transition: "border-color 0.15s ease, box-shadow 0.15s ease",
               "&:focus-within": {
                 borderColor: primary,
@@ -1420,11 +1422,8 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
                   dense
                   disabled={isSavingEditPost}
                   onSelect={emoji =>
-                    insertEmojiAtCursor(
-                      editDescriptionInputRef.current,
-                      editDescription,
-                      emoji,
-                      next => setEditDescription(truncateGraphemes(next, POST_DESCRIPTION_MAX))
+                    insertEmojiAtCursor(editDescriptionInputRef.current, editDescription, emoji, next =>
+                      setEditDescription(truncateGraphemes(next, POST_DESCRIPTION_MAX))
                     )
                   }
                 />
@@ -1572,9 +1571,7 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
       <LikersDialog
         open={Boolean(commentLikersId)}
         onClose={() => setCommentLikersId(null)}
-        fetchPath={
-          commentLikersId ? `/posts/${post._id}/comments/${commentLikersId}/likes` : null
-        }
+        fetchPath={commentLikersId ? `/posts/${post._id}/comments/${commentLikersId}/likes` : null}
         title="Liked by"
       />
 
@@ -1585,6 +1582,22 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
           src={post.url}
           alt={`Photo by ${authorName}`}
           caption={`Photo by ${authorName}`}
+        />
+      ) : null}
+
+      {blockTarget ? (
+        <BlockUserDialog
+          open
+          onClose={() => setBlockTarget(null)}
+          userId={blockTarget.id}
+          userName={blockTarget.name}
+          onBlocked={() => {
+            const blockedId = blockTarget.id
+            setBlockTarget(null)
+            if (sameUserId(post.userId, blockedId) && pathname?.startsWith("/post/")) {
+              router.push("/home")
+            }
+          }}
         />
       ) : null}
     </WidgetWrapper>

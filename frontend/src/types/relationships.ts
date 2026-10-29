@@ -4,6 +4,7 @@ export type UserRelationship = {
   isFollowing: boolean
   outgoingRequestId: string | null
   incomingRequestId: string | null
+  blockedByMe?: boolean
 }
 
 export type FriendRequestUser = {

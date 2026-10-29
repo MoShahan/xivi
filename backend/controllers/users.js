@@ -1,3 +1,4 @@
+import { assertVisibleUser, hiddenUserIdsForRequest, isBlockedByMe, skipIncomingBlocks } from "../lib/blocks.js"
 import { assertFeatureEnabled } from "../lib/features.js"
 import { formatFriendsList } from "../lib/friends.js"
 import { uploadImageBuffer } from "../lib/imagekit.js"
@@ -9,13 +10,10 @@ import {
   relationshipCounts,
   resolvePeopleCards,
 } from "../lib/peopleLists.js"
-import {
-  DEFAULT_AVATAR_COLOR,
-  DEFAULT_COVER_COLOR,
-  sanitizeProfileColor,
-} from "../lib/profileColors.js"
+import { DEFAULT_AVATAR_COLOR, DEFAULT_COVER_COLOR, sanitizeProfileColor } from "../lib/profileColors.js"
 import { getRelationshipsMap } from "../lib/relationships.js"
 import { pickSocialFields } from "../lib/social.js"
+import Block from "../models/Block.js"
 import ProfileView, { utcDayKey } from "../models/ProfileView.js"
 import User from "../models/User.js"
 
@@ -133,6 +131,22 @@ export const getUser = async (req, res, next) => {
       return res.status(404).json({ error: "User not found" })
     }
 
+    if (viewerId && String(viewerId) !== String(id)) {
+      if (await isBlockedByMe(viewerId, id)) {
+        return res.status(200).json({
+          _id: String(user._id),
+          firstName: user.firstName,
+          lastName: user.lastName,
+          picturePath: user.picturePath || "",
+          avatarColor: user.avatarColor || DEFAULT_AVATAR_COLOR,
+          blockedByMe: true,
+        })
+      }
+      if ((await isBlockedByMe(id, viewerId)) && !viewerIsAdmin) {
+        return res.status(404).json({ error: "User not found" })
+      }
+    }
+
     // A8: count at most one view per viewer per UTC day
     if (viewerId && String(viewerId) !== String(id) && user.isActive !== false) {
       try {
@@ -150,6 +164,9 @@ export const getUser = async (req, res, next) => {
     }
 
     const publicUser = await attachRelationshipCounts(user, toPublicUser(user))
+    if (viewerId && String(viewerId) === String(id)) {
+      publicUser.blockedCount = await Block.countDocuments({ blocker: viewerId })
+    }
     res.status(200).json(publicUser)
   } catch (e) {
     next(e)
@@ -225,11 +242,7 @@ export const updateProfile = async (req, res, next) => {
     }
 
     if (req.file?.buffer) {
-      const uploaded = await uploadImageBuffer(
-        req.file.buffer,
-        req.file.originalname,
-        "/xivi/avatars"
-      )
+      const uploaded = await uploadImageBuffer(req.file.buffer, req.file.originalname, "/xivi/avatars")
       user.picturePath = uploaded.url || user.picturePath
     }
 
@@ -262,7 +275,8 @@ export const discoverUsers = async (req, res, next) => {
     const { limit, cursorDate } = parseCursorPagination(req.query)
     const q = typeof req.query.q === "string" ? req.query.q.trim() : ""
 
-    const filter = { _id: { $ne: authUserId }, isActive: { $ne: false } }
+    const hidden = await hiddenUserIdsForRequest(req)
+    const filter = { _id: { $nin: [authUserId, ...hidden] }, isActive: { $ne: false } }
 
     if (q) {
       const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
@@ -292,6 +306,7 @@ export const discoverUsers = async (req, res, next) => {
           isFollowing: false,
           outgoingRequestId: null,
           incomingRequestId: null,
+          blockedByMe: false,
         }
         return {
           _id: id,
@@ -320,13 +335,16 @@ export const getUserFriends = async (req, res, next) => {
     if (!authUserId) return res.status(401).json({ error: "Unauthenticated" })
 
     const { id } = req.params
+    await assertVisibleUser(req, id)
     const user = await User.findById(id).select("friends")
     if (!user) {
       return res.status(404).json({ msg: "User not found" })
     }
 
     const pagination = parsePeoplePagination(req.query)
-    const page = pageIdList(user.friends, pagination)
+    const hidden = new Set(await hiddenUserIdsForRequest(req))
+    const visibleIds = (user.friends || []).filter(fid => !hidden.has(String(fid)))
+    const page = pageIdList(visibleIds, pagination)
     const users = await resolvePeopleCards(page.ids, authUserId)
 
     res.status(200).json({
@@ -347,13 +365,16 @@ export const getUserFollowing = async (req, res, next) => {
     if (!authUserId) return res.status(401).json({ error: "Unauthenticated" })
 
     const { id } = req.params
+    await assertVisibleUser(req, id)
     const user = await User.findById(id).select("following")
     if (!user) {
       return res.status(404).json({ msg: "User not found" })
     }
 
     const pagination = parsePeoplePagination(req.query)
-    const page = pageIdList(user.following, pagination)
+    const hidden = new Set(await hiddenUserIdsForRequest(req))
+    const visibleIds = (user.following || []).filter(fid => !hidden.has(String(fid)))
+    const page = pageIdList(visibleIds, pagination)
     const users = await resolvePeopleCards(page.ids, authUserId)
 
     res.status(200).json({
@@ -374,16 +395,18 @@ export const getUserFollowers = async (req, res, next) => {
     if (!authUserId) return res.status(401).json({ error: "Unauthenticated" })
 
     const { id } = req.params
+    await assertVisibleUser(req, id)
     const exists = await User.exists({ _id: id })
     if (!exists) {
       return res.status(404).json({ msg: "User not found" })
     }
 
     const pagination = parsePeoplePagination(req.query)
-    const result = await listFollowersPage(id, pagination, authUserId)
+    const result = await listFollowersPage(id, pagination, authUserId, {
+      skipIncoming: skipIncomingBlocks(req),
+    })
     res.status(200).json(result)
   } catch (e) {
     next(e)
   }
 }
-

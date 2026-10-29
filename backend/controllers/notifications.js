@@ -1,3 +1,4 @@
+import { hiddenUserIdsForRequest } from "../lib/blocks.js"
 import { assertFeatureEnabled, isFeatureEnabled } from "../lib/features.js"
 import { pageFromDocs, parseCursorPagination } from "../lib/pagination.js"
 import Notification from "../models/Notification.js"
@@ -34,9 +35,11 @@ export const listNotifications = async (req, res, next) => {
     }
 
     const { limit, cursorDate } = parseCursorPagination(req.query)
+    const hidden = await hiddenUserIdsForRequest(req)
     const filter = {
       recipient: userId,
       ...(cursorDate ? { createdAt: { $lt: cursorDate } } : {}),
+      ...(hidden.length ? { actor: { $nin: hidden } } : {}),
     }
 
     const docs = await Notification.find(filter)
@@ -64,7 +67,10 @@ export const unreadCount = async (req, res, next) => {
       return res.status(200).json({ count: 0 })
     }
 
-    const count = await Notification.countDocuments({ recipient: userId, read: false })
+    const hidden = await hiddenUserIdsForRequest(req)
+    const countFilter = { recipient: userId, read: false }
+    if (hidden.length) countFilter.actor = { $nin: hidden }
+    const count = await Notification.countDocuments(countFilter)
     res.status(200).json({ count })
   } catch (e) {
     next(e)
