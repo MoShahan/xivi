@@ -16,10 +16,11 @@ import {
   ShieldOutlined,
   StorefrontOutlined,
   SyncOutlined,
+  Tag,
   Upcoming,
   VisibilityOffOutlined,
 } from "@mui/icons-material"
-import { alpha, Box, Button, Link as MuiLink, Typography, useTheme } from "@mui/material"
+import { alpha, Box, Button, Divider, Link as MuiLink, Typography, useTheme } from "@mui/material"
 import NextLink from "next/link"
 import type { ReactNode } from "react"
 
@@ -74,7 +75,7 @@ function CommentThreadMockup() {
       sx={{
         mt: 1.75,
         p: 1.75,
-        borderRadius: 2,
+        borderRadius: "8px",
         bgcolor: bubble,
         border: `1px dashed ${theme.palette.divider}`,
       }}
@@ -115,6 +116,44 @@ function CommentThreadMockup() {
   )
 }
 
+function HashtagCaptionMockup() {
+  const theme = useTheme()
+  const isDark = theme.palette.mode === "dark"
+  const bubble = isDark ? alpha(theme.palette.common.white, 0.06) : alpha(theme.palette.common.black, 0.04)
+  const tagColor = theme.palette.primary.main
+
+  const tag = (label: string) => (
+    <Box component="span" sx={{ color: tagColor, fontWeight: 600 }}>
+      {label}
+    </Box>
+  )
+
+  return (
+    <Box
+      aria-hidden
+      sx={{
+        mt: 1.75,
+        p: 1.75,
+        borderRadius: "8px",
+        bgcolor: bubble,
+        border: `1px dashed ${theme.palette.divider}`,
+      }}
+    >
+      <Typography
+        sx={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.06em", color: "text.secondary", mb: 1.25 }}
+      >
+        PREVIEW · TAGGED POST
+      </Typography>
+      <Typography sx={{ fontSize: "0.8rem", color: "text.secondary", lineHeight: 1.5 }}>
+        Sunset from the ridge tonight. {tag("#travel")} {tag("#sunset")} Worth the climb.
+      </Typography>
+      <Typography sx={{ fontSize: "0.72rem", color: "text.secondary", mt: 1, opacity: 0.85 }}>
+        Tap a tag later to open every post that used it.
+      </Typography>
+    </Box>
+  )
+}
+
 const ITEMS: RoadmapItem[] = [
   {
     title: "Private friend graphs",
@@ -148,6 +187,18 @@ const ITEMS: RoadmapItem[] = [
     ],
     mockup: <CommentThreadMockup />,
     icon: <AlternateEmail />,
+  },
+  {
+    title: "Hashtags on posts",
+    summary:
+      "Write #travel in a post and it becomes a link. Clicking it opens other posts that used the same tag.",
+    details: [
+      "Hashtags live in the post caption - not a separate tag picker in this pass.",
+      "#Travel and #travel count as the same tag. Your original spelling stays in the text.",
+      "Mentions (@name) are people; hashtags (#topic) are topics.",
+    ],
+    mockup: <HashtagCaptionMockup />,
+    icon: <Tag />,
   },
   {
     title: "Live feed updates",
@@ -217,6 +268,12 @@ const ITEMS: RoadmapItem[] = [
 const ComingSoonPage = () => {
   const theme = useTheme()
   const isDark = theme.palette.mode === "dark"
+  const subtleDividerSx = {
+    borderColor: alpha(theme.palette.common[isDark ? "white" : "black"], isDark ? 0.08 : 0.07),
+    boxShadow: isDark
+      ? `0 1px 0 ${alpha("#000", 0.35)}`
+      : `0 1px 2px ${alpha(theme.palette.common.black, 0.035)}`,
+  }
 
   return (
     <InfoPageShell
@@ -230,7 +287,7 @@ const ComingSoonPage = () => {
           gap: 1.25,
           mb: 3,
           p: { xs: 2, sm: 2.25 },
-          borderRadius: 3,
+          borderRadius: "12px",
           bgcolor: alpha(theme.palette.primary.main, isDark ? 0.12 : 0.08),
           border: `1px solid ${alpha(theme.palette.primary.main, isDark ? 0.28 : 0.16)}`,
         }}
@@ -242,101 +299,81 @@ const ComingSoonPage = () => {
         </Typography>
       </Box>
 
-      <Box
-        sx={{
-          display: "grid",
-          gridTemplateColumns: "1fr",
-          alignItems: "start",
-          gap: 1.5,
-        }}
-      >
-        {ITEMS.map(item => (
-          <Box
-            key={item.title}
-            component="article"
-            sx={{
-              p: { xs: 2.25, sm: 2.5 },
-              borderRadius: 3,
-              bgcolor: "background.alt",
-              border: `1px solid ${theme.palette.divider}`,
-              alignSelf: "start",
-              height: "fit-content",
-              gridColumn: item.mockup ? { xs: "1", md: "1 / -1" } : undefined,
-              transition: "border-color 0.15s ease, box-shadow 0.15s ease",
-              "&:hover": {
-                borderColor: alpha(theme.palette.primary.main, 0.35),
-                boxShadow: isDark
-                  ? `0 8px 28px ${alpha("#000", 0.28)}`
-                  : `0 8px 24px ${alpha(theme.palette.common.black, 0.05)}`,
-              },
-            }}
-          >
-            <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start" }}>
-              <Box
-                sx={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 2,
-                  flexShrink: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  bgcolor: alpha(theme.palette.primary.main, isDark ? 0.16 : 0.1),
-                  color: "primary.main",
-                }}
-              >
-                {item.icon}
-              </Box>
-              <Box sx={{ minWidth: 0, flex: 1 }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", mb: 0.5 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 700, letterSpacing: "-0.01em" }}>
-                    {item.title}
-                  </Typography>
-                  <Typography
-                    component="span"
-                    sx={{
-                      fontSize: "0.68rem",
-                      fontWeight: 700,
-                      letterSpacing: "0.04em",
-                      textTransform: "uppercase",
-                      color: "primary.main",
-                      bgcolor: alpha(theme.palette.primary.main, isDark ? 0.16 : 0.1),
-                      px: 0.85,
-                      py: 0.2,
-                      borderRadius: 1,
-                    }}
-                  >
-                    Later
-                  </Typography>
+      <Box>
+        {ITEMS.map((item, index) => (
+          <Box key={item.title}>
+            {index > 0 ? <Divider sx={subtleDividerSx} /> : null}
+            <Box
+              component="article"
+              sx={{
+                py: { xs: 2, sm: 2.25 },
+              }}
+            >
+              <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start" }}>
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: "8px",
+                    flexShrink: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    bgcolor: alpha(theme.palette.primary.main, isDark ? 0.16 : 0.1),
+                    color: "primary.main",
+                  }}
+                >
+                  {item.icon}
                 </Box>
-                <Typography sx={{ color: "text.secondary", lineHeight: 1.6, fontSize: "0.9rem" }}>
-                  {item.summary}
-                </Typography>
-                {item.details ? (
-                  <Box component="ul" sx={{ m: 0, mt: 1.15, pl: 2.25, color: "text.secondary" }}>
-                    {item.details.map(line => (
-                      <Typography key={line} component="li" sx={{ fontSize: "0.85rem", lineHeight: 1.55, mb: 0.4 }}>
-                        {line}
-                      </Typography>
-                    ))}
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", mb: 0.5 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 700, letterSpacing: "-0.01em" }}>
+                      {item.title}
+                    </Typography>
+                    <Typography
+                      component="span"
+                      sx={{
+                        fontSize: "0.68rem",
+                        fontWeight: 700,
+                        letterSpacing: "0.04em",
+                        textTransform: "uppercase",
+                        color: "primary.main",
+                        bgcolor: alpha(theme.palette.primary.main, isDark ? 0.16 : 0.1),
+                        px: 0.85,
+                        py: 0.2,
+                        borderRadius: 1,
+                      }}
+                    >
+                      Later
+                    </Typography>
                   </Box>
-                ) : null}
-                {item.mockup}
+                  <Typography sx={{ color: "text.secondary", lineHeight: 1.6, fontSize: "0.9rem" }}>
+                    {item.summary}
+                  </Typography>
+                  {item.details ? (
+                    <Box component="ul" sx={{ m: 0, mt: 1.15, pl: 2.25, color: "text.secondary" }}>
+                      {item.details.map(line => (
+                        <Typography key={line} component="li" sx={{ fontSize: "0.85rem", lineHeight: 1.55, mb: 0.4 }}>
+                          {line}
+                        </Typography>
+                      ))}
+                    </Box>
+                  ) : null}
+                  {item.mockup}
+                </Box>
               </Box>
             </Box>
           </Box>
         ))}
       </Box>
 
+      <Divider sx={{ mt: 0.5, ...subtleDividerSx }} />
+
       <Box
         id="ideas"
         component="section"
         sx={{
-          mt: 3.5,
-          p: { xs: 2.5, sm: 3.25 },
-          borderRadius: 3,
-          bgcolor: "background.paper",
-          border: `1px solid ${theme.palette.divider}`,
+          py: { xs: 2.5, sm: 3 },
           scrollMarginTop: "5rem",
         }}
       >

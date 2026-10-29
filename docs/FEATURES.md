@@ -136,6 +136,7 @@ These are **not** in the current release. Planned for a later update:
 - Moderator role (between regular user and full admin)
 - Report user
 - Comment replies + @mentions (see below)
+- Hashtags on posts (see below)
 - Multiple images per post, image compression, and soft-delete posts
 - Messaging / DMs / chat (see below) - sidebar tab exists as a placeholder
 - Groups - create/join communities with their own feed (sidebar placeholder)
@@ -173,6 +174,18 @@ A   Comment
 ```
 
 So: comment A → children B, C, D in one column. Reply to C still lands under D as another child of A, not pushed further right.
+
+### Hashtags on posts (design)
+
+**Not in this release.** Scope is **post captions** - comments do not get searchable tags in this pass.
+
+**Hashtags (Instagram / Facebook / LinkedIn style)**
+
+- Typing `#` plus a word in a post (`#travel`, `#Food`) is stored as a tag.
+- In the feed, that word is a hyperlink. Clicking it opens a page of posts that used the same tag (`/hashtag/travel`).
+- `#Travel` and `#travel` are the same tag. The caption keeps the author’s casing; the link is case-insensitive.
+- Tags are derived from the caption on create/edit. They are not a separate picker in v1.
+- Mentions (`@name`) stay people; hashtags (`#topic`) stay topics.
 
 ### Messaging / DMs
 

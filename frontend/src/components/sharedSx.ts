@@ -14,13 +14,13 @@ export const unstyledButtonSx: SystemStyleObject<Theme> = {
 
 /** Sidebar / drawer list rows. */
 export const navListItemSx: SystemStyleObject<Theme> = {
-  borderRadius: 2,
+  borderRadius: "8px",
   mb: 0.25,
 }
 
 export function navListItemSelectedSx(isDark: boolean): SystemStyleObject<Theme> {
   return {
-    borderRadius: 2,
+    borderRadius: "8px",
     mb: 0.25,
     "&.Mui-selected": {
       bgcolor: theme => alpha(theme.palette.primary.main, isDark ? 0.18 : 0.1),
