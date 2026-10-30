@@ -695,9 +695,9 @@ const MessagesApp = ({ conversationId }: MessagesAppProps) => {
                         maxWidth: "min(78%, 520px)",
                         px: 1.35,
                         py: 0.85,
-                        borderRadius: 2.5,
-                        borderTopRightRadius: mine ? 0.75 : 2.5,
-                        borderTopLeftRadius: mine ? 2.5 : 0.75,
+                        borderRadius: "16px",
+                        borderTopRightRadius: mine ? "4px" : "16px",
+                        borderTopLeftRadius: mine ? "16px" : "4px",
                         bgcolor: mine
                           ? isDark
                             ? alpha(theme.palette.primary.main, 0.28)
