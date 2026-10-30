@@ -15,7 +15,6 @@ import {
   NewspaperOutlined,
   ShieldOutlined,
   StorefrontOutlined,
-  SyncOutlined,
   Tag,
   Upcoming,
   VisibilityOffOutlined,
@@ -199,16 +198,6 @@ const ITEMS: RoadmapItem[] = [
     ],
     mockup: <HashtagCaptionMockup />,
     icon: <Tag />,
-  },
-  {
-    title: "Live feed updates",
-    summary:
-      "See new posts, comments, and profile photos without refreshing the page. Not available yet - we will add this later and choose the right way to deliver it then.",
-    details: [
-      "Today the feed is a snapshot from when you opened the page.",
-      "Someone else’s new post, comment, or photo change will not appear until you refresh or navigate.",
-    ],
-    icon: <SyncOutlined />,
   },
   {
     title: "Richer posts",
