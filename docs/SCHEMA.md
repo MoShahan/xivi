@@ -19,6 +19,7 @@ Database name comes from the path in `MONGODB_URI` (local/Atlas). Collection nam
 | `conversations`  | `Conversation.js`  | 1:1 DM threads                                      |
 | `messages`       | `Message.js`       | DM messages                                         |
 | `notifications`  | `Notification.js`  | In-app notifications                                |
+| `newscaches`     | `NewsCache.js`     | Hour-bucketed GNews headline snapshots              |
 | `sitesettings`   | `SiteSettings.js`  | Singleton site feature flags (`_id: "global"`)      |
 
 There is **no** separate `comments` collection.
@@ -245,6 +246,28 @@ None declared on the Post schema today (feed/profile queries may benefit from `{
 | Recipient | `{ recipient: 1 }`                |
 | Read flag | `{ read: 1 }`                     |
 | Feed      | `{ recipient: 1, createdAt: -1 }` |
+
+---
+
+## `newscaches`
+
+**File:** `backend/models/NewsCache.js`  
+**Timestamps:** `createdAt`, `updatedAt`
+
+| Field       | Type     | Required | Notes                                              |
+| ----------- | -------- | -------- | -------------------------------------------------- |
+| `_id`       | ObjectId | auto     | Primary key                                        |
+| `hourKey`   | String   | yes      | UTC hour bucket `YYYY-MM-DDTHH`; unique            |
+| `provider`  | String   | yes      | e.g. `gnews`                                       |
+| `fetchedAt` | Date     | yes      | When this bucket was filled; TTL ~48h              |
+| `articles`  | Array    |          | Embedded headlines (id, title, description, url, image, publishedAt, sourceName, sourceUrl) |
+
+### Indexes
+
+| Index    | Spec                                                         |
+| -------- | ------------------------------------------------------------ |
+| Hour key | `{ hourKey: 1 }` unique                                      |
+| TTL      | `{ fetchedAt: 1 }` expireAfterSeconds ≈ 48 hours             |
 
 ---
 

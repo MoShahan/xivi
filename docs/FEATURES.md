@@ -71,6 +71,13 @@ Full feature list for the current app, plus planned items for a later release.
 - Slim top-bar bell with unread badge
 - `/notifications` page with mark-read / mark-all-read
 
+## News
+
+- `/news` in the left rail — top headlines separate from the social feed
+- GNews English general headlines (up to 10); server caches by UTC hour so free-tier quota stays low
+- Image cards with title, source, time, and description; stories open on the original site
+- Requires `GNEWS_API_KEY` on the backend (never exposed to the frontend)
+
 ## Messages
 
 - 1:1 DMs at `/messages` (desktop two-pane; mobile list then thread)
@@ -116,7 +123,7 @@ Full feature list for the current app, plus planned items for a later release.
 - Stone-first theme + Fraunces / Source Sans 3; Xivi logo + mark; favicon / apple-touch icon
 - Split login/register layout with atmosphere images
 - **Help & FAQ** (`/help`), **Coming soon** (`/coming-soon`), **Privacy** (`/privacy`), **Terms** (`/terms`)
-- Authenticated **app shell**: left sidebar (Home, Messages, Find people, Friend requests, Groups, Events, Marketplace, News, Settings, Coming soon, Help, tutorial, theme; name/photo opens your profile; logout) + slim top bar (notifications bell); mobile hamburger drawer. Groups / Events / Marketplace / News are **Coming soon placeholders**. Notifications stay on the bell, not a second rail item.
+- Authenticated **app shell**: left sidebar (Home, Messages, Find people, Friend requests, Groups, Events, Marketplace, News, Settings, Coming soon, Help, tutorial, theme; name/photo opens your profile; logout) + slim top bar (notifications bell); mobile hamburger drawer. Groups / Events / Marketplace are **Coming soon placeholders**; **News** is live. Notifications stay on the bell, not a second rail item.
 - In-app **product tutorial** (`react-joyride`): rail **Show tutorial** (compose, Find people, notifications, profile); replayable; optional one-time auto-run
 - Mobile nav drawer mirrors the left rail items
 - Skeleton loaders for posts feed, profile header, likers / friends / followers / following lists, and friend-request inbox
@@ -154,7 +161,6 @@ These are **not** in the current release. Planned for a later update:
 - Groups - create/join communities with their own feed (sidebar placeholder)
 - Events - time-bound hangouts, separate from Groups (sidebar placeholder)
 - Marketplace - member buy/sell listings, not site ads (sidebar placeholder)
-- News - headlines in their own tab, separate from the social feed (sidebar placeholder)
 - Ads / sponsored content - not a sidebar tab; different from Marketplace
 - GIF, audio, or other non-image post attachments
 
@@ -210,16 +216,15 @@ So: comment A → children B, C, D in one column. Reply to C still lands under D
 - **Push notifications** - a browser or phone alert when the tab is closed. Unread today is only the in-app Messages badge.
 - **Group chats** - one thread with several people. Separate from the **Groups** community tab.
 
-### Groups, Events, Marketplace, News
+### Groups, Events, Marketplace
 
 **Not in this release.** Each has a sidebar tab that explains the idea:
 
 - **Groups** (`/groups`) - ongoing communities people can create and join.
 - **Events** (`/events`) - one occasion with a date/time (meetup, birthday). Not a group.
 - **Marketplace** (`/marketplace`) - person-to-person listings. **Not** sponsored ads.
-- **News** (`/news`) - headlines in their own place, not mixed into Home.
 
-**Ads / sponsored content** stay on this roadmap only (no member sidebar tab). **Notifications** stay on the existing bell / `/notifications` page.
+**News** ships in this release (`/news`). **Ads / sponsored content** stay on this roadmap only (no member sidebar tab). **Notifications** stay on the existing bell / `/notifications` page.
 
 ---
 

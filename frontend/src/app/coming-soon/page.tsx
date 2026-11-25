@@ -12,7 +12,6 @@ import {
   GroupsOutlined,
   ImageOutlined,
   MailOutlined,
-  NewspaperOutlined,
   ShieldOutlined,
   StorefrontOutlined,
   Tag,
@@ -239,12 +238,6 @@ const ITEMS: RoadmapItem[] = [
       "Sponsored feed ads, if they come later, stay a separate product.",
     ],
     icon: <StorefrontOutlined />,
-  },
-  {
-    title: "News",
-    summary: "Headlines and stories in their own place, separate from posts by people you know.",
-    details: ["A News tab is in the sidebar. Sources are not chosen yet."],
-    icon: <NewspaperOutlined />,
   },
   {
     title: "Ads and sponsored content",

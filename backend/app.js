@@ -6,6 +6,7 @@ import morgan from "morgan"
 import { errorHandler } from "./middleware/errorHandler.js"
 import authRoutes from "./routes/auth.js"
 import conversationRoutes from "./routes/conversations.js"
+import newsRoutes from "./routes/news.js"
 import notificationRoutes from "./routes/notifications.js"
 import postRoutes from "./routes/posts.js"
 import settingsRoutes from "./routes/settings.js"
@@ -68,6 +69,7 @@ export function createApp() {
   app.use("/posts", postRoutes)
   app.use("/conversations", conversationRoutes)
   app.use("/notifications", notificationRoutes)
+  app.use("/news", newsRoutes)
   app.use("/settings", settingsRoutes)
 
   app.use(errorHandler)
