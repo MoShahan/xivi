@@ -12,6 +12,10 @@ type NewsArticleCardProps = {
   hero?: boolean
 }
 
+/** Fixed card heights so oversized source images never stretch the layout. */
+const CARD_HEIGHT = { xs: 320, sm: 360 } as const
+const HERO_HEIGHT = { xs: 480, sm: 560 } as const
+
 function formatPublishedAt(iso: string): string {
   if (!iso) return ""
   const date = new Date(iso)
@@ -52,7 +56,8 @@ const NewsArticleCard = ({ article, hero = false }: NewsArticleCardProps) => {
         textDecoration: "none",
         color: "inherit",
         bgcolor: "background.alt",
-        minHeight: hero ? { xs: 240, sm: 280 } : { xs: 160, sm: 180 },
+        height: hero ? HERO_HEIGHT : CARD_HEIGHT,
+        maxHeight: hero ? HERO_HEIGHT : CARD_HEIGHT,
         transition: "transform 0.2s ease, box-shadow 0.2s ease",
         "&:hover": {
           transform: "translateY(-2px)",
@@ -62,6 +67,9 @@ const NewsArticleCard = ({ article, hero = false }: NewsArticleCardProps) => {
               : `0 8px 24px ${alpha(theme.palette.common.black, 0.1)}`,
           "& .news-card-image": {
             transform: "scale(1.04)",
+          },
+          "& .news-card-scrim": {
+            opacity: 1,
           },
         },
         "&:focus-visible": {
@@ -78,12 +86,16 @@ const NewsArticleCard = ({ article, hero = false }: NewsArticleCardProps) => {
           alt=""
           aria-hidden
           loading="lazy"
+          // Some publishers (e.g. AllAfrica CDN) 403 hotlinks when Referer is our origin.
+          referrerPolicy="no-referrer"
           sx={{
             position: "absolute",
             inset: 0,
             width: "100%",
             height: "100%",
+            maxHeight: "100%",
             objectFit: "cover",
+            objectPosition: "center",
             transition: "transform 0.35s ease",
           }}
         />
@@ -101,13 +113,23 @@ const NewsArticleCard = ({ article, hero = false }: NewsArticleCardProps) => {
       )}
 
       <Box
+        className="news-card-scrim"
         aria-hidden
         sx={{
           position: "absolute",
           inset: 0,
+          opacity: 0.92,
+          transition: "opacity 0.35s ease",
           background: hasImage
-            ? `linear-gradient(180deg, ${alpha("#000", 0.05)} 0%, ${alpha("#000", 0.25)} 40%, ${alpha("#000", 0.78)} 100%)`
-            : `linear-gradient(180deg, ${alpha("#000", 0)} 0%, ${alpha("#000", isDark ? 0.55 : 0.45)} 100%)`,
+            ? `linear-gradient(
+                180deg,
+                ${alpha("#000", 0)} 0%,
+                ${alpha("#000", 0.12)} 28%,
+                ${alpha("#000", 0.45)} 52%,
+                ${alpha("#000", 0.78)} 72%,
+                ${alpha("#000", 0.92)} 100%
+              )`
+            : `linear-gradient(180deg, ${alpha("#000", 0)} 0%, ${alpha("#000", isDark ? 0.65 : 0.55)} 100%)`,
         }}
       />
 
@@ -118,7 +140,8 @@ const NewsArticleCard = ({ article, hero = false }: NewsArticleCardProps) => {
           display: "flex",
           flexDirection: "column",
           justifyContent: "flex-end",
-          minHeight: hero ? { xs: 240, sm: 280 } : { xs: 160, sm: 180 },
+          height: "100%",
+          maxHeight: "100%",
           p: hero ? { xs: 2, sm: 2.5 } : { xs: 1.75, sm: 2 },
         }}
       >
