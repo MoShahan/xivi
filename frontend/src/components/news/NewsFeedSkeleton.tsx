@@ -16,7 +16,8 @@ const CardSkeleton = ({ hero = false }: { hero?: boolean }) => {
         border: `1px solid ${theme.palette.divider}`,
         boxShadow: cardShadow(theme.palette.mode),
         bgcolor: "background.alt",
-        minHeight: hero ? { xs: 240, sm: 280 } : { xs: 160, sm: 180 },
+        height: hero ? { xs: 480, sm: 560 } : { xs: 320, sm: 360 },
+        maxHeight: hero ? { xs: 480, sm: 560 } : { xs: 320, sm: 360 },
         p: hero ? { xs: 2, sm: 2.5 } : { xs: 1.75, sm: 2 },
         display: "flex",
         flexDirection: "column",
@@ -28,7 +29,9 @@ const CardSkeleton = ({ hero = false }: { hero?: boolean }) => {
         sx={{
           position: "absolute",
           inset: 0,
+          width: "100%",
           height: "100%",
+          maxHeight: "100%",
         }}
       />
       <Box sx={{ position: "relative", zIndex: 1 }}>
