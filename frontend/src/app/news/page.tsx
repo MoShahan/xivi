@@ -11,8 +11,19 @@ import { api } from "@/lib/api"
 import { getErrorMessage } from "@/lib/errors"
 import type { NewsArticle, NewsFeedResponse } from "@/types/news"
 
+function formatLastUpdated(iso: string): string {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return ""
+  return date.toLocaleString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  })
+}
+
 const NewsPage = () => {
   const [articles, setArticles] = useState<NewsArticle[]>([])
+  const [fetchedAt, setFetchedAt] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -23,9 +34,11 @@ const NewsPage = () => {
       const { data } = await api.get<NewsFeedResponse>("/news")
       if (signal?.cancelled) return
       setArticles(Array.isArray(data.articles) ? data.articles : [])
+      setFetchedAt(typeof data.fetchedAt === "string" ? data.fetchedAt : null)
     } catch (err: unknown) {
       if (signal?.cancelled) return
       setArticles([])
+      setFetchedAt(null)
       setError(getErrorMessage(err, "Could not load news"))
     } finally {
       if (!signal?.cancelled) setLoading(false)
@@ -45,9 +58,21 @@ const NewsPage = () => {
       <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
         News
       </Typography>
-      <Typography sx={{ color: "text.secondary", mb: 2.25, lineHeight: 1.5 }}>
+      <Typography sx={{ color: "text.secondary", mb: fetchedAt && !loading ? 0.75 : 2.25, lineHeight: 1.5 }}>
         Top headlines, refreshed hourly - separate from posts by people you know.
       </Typography>
+      {!loading && fetchedAt ? (
+        <Typography
+          sx={{
+            color: "text.secondary",
+            fontSize: "0.8rem",
+            mb: 2.25,
+            lineHeight: 1.4,
+          }}
+        >
+          Last updated at {formatLastUpdated(fetchedAt)}
+        </Typography>
+      ) : null}
 
       {loading ? <NewsFeedSkeleton /> : null}
 
