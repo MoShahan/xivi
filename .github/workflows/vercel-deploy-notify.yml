@@ -69,7 +69,7 @@ jobs:
             text="${text%%$'\n'*}"
             printf '%s' "${text:0:180}"
           }
-          dash() { if [ -n "${1:-}" ]; then printf '%s' "$1"; else printf '—'; fi; }
+          dash() { if [ -n "${1:-}" ]; then printf '%s' "$1"; else printf '-'; fi; }
           format_duration() {
             local s="$1" h m r
             [ "$s" -lt 0 ] && s=0
@@ -168,7 +168,7 @@ jobs:
 
           BRANCH_FIELD="\`$BRANCH\`"
           [ -n "$BRANCH_URL" ] && BRANCH_FIELD="[\`$BRANCH\`]($BRANCH_URL)"
-          COMMIT_FIELD="—"
+          COMMIT_FIELD="-"
           [ -n "$SHORT_SHA" ] && COMMIT_FIELD="\`$SHORT_SHA\`"
           [ -n "$COMMIT_URL" ] && COMMIT_FIELD="[\`$SHORT_SHA\`]($COMMIT_URL)"
 
@@ -269,7 +269,7 @@ jobs:
             echo
             [ -n "$COMMIT_MESSAGE" ] && echo "> $COMMIT_MESSAGE" && echo
             if [ -n "$BRANCH_URL" ]; then echo "- 🌿 **Branch:** [\`$BRANCH\`]($BRANCH_URL)"; else echo "- 🌿 **Branch:** \`$BRANCH\`"; fi
-            if [ -n "$COMMIT_URL" ]; then echo "- 📝 **Commit:** [\`$SHORT_SHA\`]($COMMIT_URL) — $COMMIT_MESSAGE"; else echo "- 📝 **Commit:** ${SHORT_SHA:-Unknown commit}"; fi
+            if [ -n "$COMMIT_URL" ]; then echo "- 📝 **Commit:** [\`$SHORT_SHA\`]($COMMIT_URL) - $COMMIT_MESSAGE"; else echo "- 📝 **Commit:** ${SHORT_SHA:-Unknown commit}"; fi
             echo "- 👤 **Pushed by:** $PUSHER_MD"
             [ -n "$DURATION" ] && echo "- ⏱️ **Duration:** $DURATION"
             [ -n "$PR_NUMBER" ] && echo "- 🔀 **Pull request:** [#${PR_NUMBER}]($PR_URL) $PR_TITLE"
@@ -286,7 +286,7 @@ jobs:
         shell: bash
         run: |
           if [ -z "${DISCORD_WEBHOOK_URL:-}" ] || [[ "$DISCORD_WEBHOOK_URL" != https://* ]]; then
-            echo "Discord webhook not configured — skipping"
+            echo "Discord webhook not configured - skipping"
             exit 0
           fi
 
@@ -310,7 +310,7 @@ jobs:
         shell: bash
         run: |
           if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
-            echo "Telegram secrets not configured — skipping"
+            echo "Telegram secrets not configured - skipping"
             exit 0
           fi
 
@@ -341,7 +341,7 @@ jobs:
             exit 0
           fi
 
-          echo "No chat app delivered a message — falling back to a GitHub commit comment"
+          echo "No chat app delivered a message - falling back to a GitHub commit comment"
           if [ -z "${SHA:-}" ]; then
             echo "::warning::No commit SHA available for GitHub fallback"
             echo "Notification recorded in the workflow summary only"

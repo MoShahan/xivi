@@ -113,7 +113,7 @@ async function fetchAndStore(hourKey) {
   try {
     articles = await fetchFromGnews()
   } catch (err) {
-    // Missing API key is config — do not mask with a stale snapshot.
+    // Missing API key is config - do not mask with a stale snapshot.
     if (err?.status === 503) throw err
 
     const fallback = await loadLatestSnapshot()

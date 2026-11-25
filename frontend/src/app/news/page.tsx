@@ -46,7 +46,7 @@ const NewsPage = () => {
         News
       </Typography>
       <Typography sx={{ color: "text.secondary", mb: 2.25, lineHeight: 1.5 }}>
-        Top headlines, refreshed hourly — separate from posts by people you know.
+        Top headlines, refreshed hourly - separate from posts by people you know.
       </Typography>
 
       {loading ? <NewsFeedSkeleton /> : null}
@@ -65,7 +65,7 @@ const NewsPage = () => {
       {!loading && !error && articles.length === 0 ? (
         <EmptyState
           title="No headlines right now"
-          description="Check back soon — we will refresh this feed on the hour."
+          description="Check back soon - we will refresh this feed on the hour."
           actionLabel="Refresh"
           onAction={() => {
             void load()

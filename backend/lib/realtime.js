@@ -101,7 +101,7 @@ async function broadcastPresence(userId, online) {
 }
 
 /**
- * Attach Socket.io to the HTTP server. No-op extra secrets — JWT from handshake.auth.token.
+ * Attach Socket.io to the HTTP server. No-op extra secrets - JWT from handshake.auth.token.
  * @param {import("http").Server} httpServer
  */
 export function attachRealtime(httpServer) {

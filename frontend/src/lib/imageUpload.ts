@@ -20,7 +20,7 @@ const REJECTED_TYPES = new Set([
 const REJECTED_EXTENSIONS = new Set([".heic", ".heif"])
 
 const UNSUPPORTED_IMAGE =
-  "Use a JPEG, PNG, GIF, or WebP. On a phone, pick from the photo library or take a JPEG — HEIC is not supported."
+  "Use a JPEG, PNG, GIF, or WebP. On a phone, pick from the photo library or take a JPEG - HEIC is not supported."
 
 function fileExtension(name: string): string {
   const i = name.lastIndexOf(".")

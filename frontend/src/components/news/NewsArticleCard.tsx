@@ -41,7 +41,7 @@ const NewsArticleCard = ({ article, hero = false }: NewsArticleCardProps) => {
       href={article.url}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label={`${article.title}${article.sourceName ? ` — ${article.sourceName}` : ""}`}
+      aria-label={`${article.title}${article.sourceName ? ` - ${article.sourceName}` : ""}`}
       sx={{
         display: "block",
         position: "relative",

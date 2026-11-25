@@ -73,7 +73,7 @@ Full feature list for the current app, plus planned items for a later release.
 
 ## News
 
-- `/news` in the left rail — top headlines separate from the social feed
+- `/news` in the left rail - top headlines separate from the social feed
 - GNews English general headlines (up to 10); server caches by UTC hour so free-tier quota stays low
 - Image cards with title, source, time, and description; stories open on the original site
 - Requires `GNEWS_API_KEY` on the backend (never exposed to the frontend)
