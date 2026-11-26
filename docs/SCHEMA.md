@@ -102,9 +102,17 @@ There is **no** separate `comments` collection.
 | `url`         | String                 |          | `""`    | ImageKit image URL (optional)                    |
 | `likes`       | Map\<String, Boolean\> |          |         | Keys = liker user ids                            |
 | `comments`    | Comment[]              |          | `[]`    | Embedded subdocuments                            |
+| `mentions`    | Mention[]              |          | `[]`    | `@First Last` targets in `description`           |
 | `createdAt`   | Date                   | auto     |         |                                                  |
 | `updatedAt`   | Date                   | auto     |         | Touches on like / comment / save of the document |
 | `editedAt`    | Date                   |          | `null`  | Set when description or image is edited          |
+
+### `mentions[]` / `comments[].mentions[]`
+
+| Field     | Type   | Required | Notes                                      |
+| --------- | ------ | -------- | ------------------------------------------ |
+| `userId`  | String | yes      | Mentioned User `_id`                       |
+| `display` | String | yes      | Exact `First Last` as inserted (no `@`)    |
 
 ### `comments[]` subdocument
 
@@ -114,12 +122,16 @@ There is **no** separate `comments` collection.
 | `userId`    | String                 | yes      |         | Commenter User `_id`                |
 | `text`      | String                 | yes      |         | Trimmed                             |
 | `likes`     | Map\<String, Boolean\> |          | `{}`    | Keys = liker user ids               |
+| `mentions`  | Mention[]              |          | `[]`    | `@First Last` targets in `text`     |
 | `createdAt` | Date                   | auto     |         | No `updatedAt` on comments          |
 | `editedAt`  | Date                   |          | `null`  | Set when the comment text is edited |
 
 ### Indexes
 
-None declared on the Post schema today (feed/profile queries may benefit from `{ userId: 1, createdAt: -1 }` later).
+| Index          | Spec                          |
+| -------------- | ----------------------------- |
+| Author timeline | `{ userId: 1, createdAt: -1 }` |
+| Feed           | `{ createdAt: -1 }`           |
 
 ---
 
@@ -237,7 +249,7 @@ None declared on the Post schema today (feed/profile queries may benefit from `{
 | `createdAt` | Date            | auto     |         |                                  |
 | `updatedAt` | Date            | auto     |         |                                  |
 
-**Type enum:** `post_like`, `comment`, `comment_like`, `friend`, `friend_request`, `friend_accept`
+**Type enum:** `post_like`, `comment`, `comment_like`, `mention`, `friend`, `friend_request`, `friend_accept`
 
 ### Indexes
 

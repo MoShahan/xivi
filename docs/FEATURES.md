@@ -26,6 +26,7 @@ Full feature list for the current app, plus planned items for a later release.
 ## Posts & feed
 
 - Create text and/or image posts (emoji picker on the compose bar; image dropzone with preview)
+- **@mentions** in post descriptions and comments: type `@` for a people picker (first/last name + avatar); inserted as `@First Last` profile links; mention notifications; blocked users cannot be tagged
 - Home feed with author name, avatar, and relative time
 - Infinite scroll on home feed and profile Posts tab (`?limit=&cursor=`)
 - Live feed updates on Home (Everyone / Following), profile Posts, and `/post/[postId]`: poll every 60s while the tab is visible; a floating **new posts** button stays at the top of the screen when you have scrolled down (click to scroll up and load); new posts also insert if you scroll back to the top yourself; comments and author photos on visible posts merge in place; profile header photo refreshes silently
@@ -68,7 +69,7 @@ Full feature list for the current app, plus planned items for a later release.
 
 ## Notifications
 
-- In-app notifications for likes, comments, friend requests / accepts
+- In-app notifications for likes, comments, mentions, friend requests / accepts
 - Slim top-bar bell with unread badge
 - `/notifications` page with mark-read / mark-all-read
 
@@ -155,7 +156,7 @@ These are **not** in the current release. Planned for a later update:
 - Separate admin SPA / dedicated admin host
 - Moderator role (between regular user and full admin)
 - Report user
-- Comment replies + @mentions (see below)
+- Comment replies (one-level indent; see below) - @mentions already ship in posts and comments
 - Hashtags on posts (see below)
 - Multiple images per post, image compression, and soft-delete posts
 - Richer DMs (see below) - delivered ticks, images in chat, edit/delete, hide last seen, push alerts, group threads
@@ -165,16 +166,17 @@ These are **not** in the current release. Planned for a later update:
 - Ads / sponsored content - not a sidebar tab; different from Marketplace
 - GIF, audio, or other non-image post attachments
 
-### Comment replies + @mentions (design)
+### @mentions (shipped)
 
-**Not in this release.** Scope is **comments and replies only** - not the home compose / new-post box.
+- Available in **post descriptions and comments** (create + edit). Comment **replies** are still future (below).
+- Typing `@` opens a people picker (network-first, then name search). Duplicate names are disambiguated by avatar.
+- Choosing someone inserts `@First Last` (no separate username) and stores a validated `userId`.
+- Posted mentions are profile links to `/profile/[userId]`. Mentioned people get an in-app `mention` notification.
+- Server validates mention ids (active, not blocked, `@First Last` must appear in the text; max 10).
 
-**@mentions (Instagram / Facebook style)**
+### Comment replies (design)
 
-- Typing `@` in a comment or reply opens a small user picker.
-- The list filters as you type after `@`.
-- Choosing a user inserts `@username` as a hyperlink to that person’s profile.
-- Clicking a posted mention opens `/profile/[userId]`.
+**Not in this release.**
 
 **Replies - one indent only (not Reddit / Tumblr nesting)**
 
@@ -182,6 +184,7 @@ These are **not** in the current release. Planned for a later update:
 - A **reply** is indented once, slightly to the right of that comment.
 - There is **no second indent**. A reply cannot have its own nested thread.
 - Replying to a reply still creates a sibling at that same indent, stacked below.
+- Mentions in reply composers will reuse the same `@` picker once replies ship.
 
 Example:
 
