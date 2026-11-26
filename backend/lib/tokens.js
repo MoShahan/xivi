@@ -4,9 +4,11 @@ import jwt from "jsonwebtoken"
 
 import User from "../models/User.js"
 
-const DEFAULT_ACCESS_TOKEN_EXPIRES = "1h"
+const DEFAULT_ACCESS_TOKEN_EXPIRES = "15m"
 const DEFAULT_REFRESH_TOKEN_EXPIRES = "7d"
 const MAX_REFRESH_SESSIONS = 10
+/** Pin HMAC algorithm so verify rejects unexpected algs. */
+const JWT_ALGORITHM = "HS256"
 
 export function getAccessTokenExpires() {
   return process.env.ACCESS_TOKEN_EXPIRES?.trim() || DEFAULT_ACCESS_TOKEN_EXPIRES
@@ -45,6 +47,7 @@ function hashToken(token) {
 
 export function signAccessToken(userId) {
   return jwt.sign({ id: String(userId), typ: "access" }, requireAccessSecret(), {
+    algorithm: JWT_ALGORITHM,
     expiresIn: getAccessTokenExpires(),
   })
 }
@@ -52,12 +55,13 @@ export function signAccessToken(userId) {
 /** Sign a refresh JWT (includes `jti`). Does not touch the DB - use `issueAuthTokens` in app code. */
 export function signRefreshToken(userId, jti = crypto.randomUUID()) {
   return jwt.sign({ id: String(userId), typ: "refresh", jti }, requireRefreshSecret(), {
+    algorithm: JWT_ALGORITHM,
     expiresIn: getRefreshTokenExpires(),
   })
 }
 
 export function verifyAccessTokenString(token) {
-  const payload = jwt.verify(token, requireAccessSecret())
+  const payload = jwt.verify(token, requireAccessSecret(), { algorithms: [JWT_ALGORITHM] })
   if (!payload?.id || payload.typ === "refresh") {
     throw new Error("Invalid access token")
   }
@@ -65,7 +69,7 @@ export function verifyAccessTokenString(token) {
 }
 
 export function verifyRefreshTokenString(token) {
-  const payload = jwt.verify(token, requireRefreshSecret())
+  const payload = jwt.verify(token, requireRefreshSecret(), { algorithms: [JWT_ALGORITHM] })
   if (!payload?.id || payload.typ !== "refresh" || !payload.jti) {
     throw new Error("Invalid refresh token")
   }

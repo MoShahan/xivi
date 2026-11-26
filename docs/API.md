@@ -17,7 +17,7 @@ Authorization: Bearer <accessToken>
 | `POST`   | `/auth/register`                               | Create account; returns user + access + refresh tokens                                                                                                                                          |
 | `POST`   | `/auth/login`                                  | Log in; returns user + access + refresh tokens                                                                                                                                                  |
 | `POST`   | `/auth/refresh`                                | Rotate refresh: exchange valid refresh for a new access + refresh pair                                                                                                                          |
-| `POST`   | `/auth/logout`                                 | Revoke refresh session (Bearer access; body may include `refreshToken`)                                                                                                                         |
+| `POST`   | `/auth/logout`                                 | Revoke refresh session(s) (Bearer access; body may include `refreshToken`). Access JWT stays valid until `exp` (default `15m`)                                                                  |
 | `GET`    | `/auth/me`                                     | Current user (Bearer)                                                                                                                                                                           |
 | `GET`    | `/auth/providers`                              | Configured OAuth providers                                                                                                                                                                      |
 | `GET`    | `/auth/:provider`                              | Start OAuth (`google` \| `github` \| `discord`)                                                                                                                                                 |
@@ -84,13 +84,25 @@ Flags apply to **`role: user` only** - admins always bypass. When a write is blo
 
 ### Realtime (Socket.io)
 
-The API process also serves Socket.io on the same HTTP server (no extra host or API key). The browser connects to `NEXT_PUBLIC_API_URL` with `auth.token` = access JWT. Hosting must allow WebSocket upgrades. Events: `join` / `leave` / `typing` (client); `message` / `read` / `presence` / `typing` (server). Messages are always saved over REST first.
+The API process also serves Socket.io on the same HTTP server (no extra host or API key). The browser connects to `NEXT_PUBLIC_API_URL` with `auth.token` = access JWT. Hosting must allow WebSocket upgrades. Events: `join` / `leave` / `typing` (client); `message` / `read` / `presence` / `typing` (server). Messages are always saved over REST first. Client `join` / `typing` events are lightly rate-limited per socket.
+
+Heavy authenticated list GETs (feed, discover, messages, notifications, people lists) use a per-user read rate limiter (~300 / 15 min). Auth and write/create routes have separate limiters.
 
 ---
 
 ## Uploads
 
 Post and avatar images are uploaded to **ImageKit** (Multer memory → ImageKit). MongoDB stores the returned HTTPS URL (e.g. on `Post.url` / user `picturePath`). Configure `IMAGEKIT_*` in `backend/.env` (see `backend/.env.example`). Max image size: **5 MB**; allowed types: jpeg, png, gif, webp.
+
+**Residual:** ImageKit URLs are public CDN links; possession of the URL bypasses app auth for viewing the file.
+
+---
+
+## Security notes
+
+- Access JWT default lifetime is **15m** (`ACCESS_TOKEN_EXPIRES`). Logout revokes refresh sessions only; a stolen access token works until `exp`.
+- Profiles / posts / friend graphs are readable by any authenticated user (subject to blocks).
+- Tokens live in the browser (localStorage via Redux Persist); XSS remains the main session-theft risk. See [README Auth note](../README.md#auth-note).
 
 ---
 

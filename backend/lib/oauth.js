@@ -64,13 +64,14 @@ export function frontendOrigin() {
 export function signOauthState(provider) {
   const secret = process.env.ACCESS_TOKEN_SECRET
   return jwt.sign({ provider, nonce: crypto.randomBytes(8).toString("hex") }, secret, {
+    algorithm: "HS256",
     expiresIn: STATE_TTL_SEC,
   })
 }
 
 export function verifyOauthState(state, expectedProvider) {
   const secret = process.env.ACCESS_TOKEN_SECRET
-  const payload = jwt.verify(state, secret)
+  const payload = jwt.verify(state, secret, { algorithms: ["HS256"] })
   if (payload.provider !== expectedProvider) {
     throw new Error("OAuth state provider mismatch")
   }

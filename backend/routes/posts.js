@@ -22,25 +22,25 @@ import {
 } from "../controllers/posts.js"
 import { requireObjectId } from "../lib/objectId.js"
 import { verifyAccessToken } from "../middleware/auth.js"
-import { authCreateLimiter, authWriteLimiter } from "../middleware/rateLimit.js"
+import { authCreateLimiter, authReadLimiter, authWriteLimiter } from "../middleware/rateLimit.js"
 import { uploadPicture } from "../middleware/upload.js"
 
 const router = express.Router()
 
-router.get("/", verifyAccessToken, getFeed)
+router.get("/", verifyAccessToken, authReadLimiter, getFeed)
 
 router.post("/", verifyAccessToken, authCreateLimiter, uploadPicture, createPost)
 
 /** Must be registered before `/:postId` so these paths are not treated as ids. */
-router.get("/saved", verifyAccessToken, getSavedPosts)
-router.get("/liked", verifyAccessToken, getLikedPosts)
-router.get("/commented", verifyAccessToken, getCommentedPosts)
+router.get("/saved", verifyAccessToken, authReadLimiter, getSavedPosts)
+router.get("/liked", verifyAccessToken, authReadLimiter, getLikedPosts)
+router.get("/commented", verifyAccessToken, authReadLimiter, getCommentedPosts)
 
-router.get("/:userId/posts", verifyAccessToken, requireObjectId("userId"), getUserPosts)
+router.get("/:userId/posts", verifyAccessToken, authReadLimiter, requireObjectId("userId"), getUserPosts)
 
-router.get("/:postId", verifyAccessToken, requireObjectId("postId"), getPost)
+router.get("/:postId", verifyAccessToken, authReadLimiter, requireObjectId("postId"), getPost)
 
-router.get("/:postId/likes", verifyAccessToken, requireObjectId("postId"), getPostLikers)
+router.get("/:postId/likes", verifyAccessToken, authReadLimiter, requireObjectId("postId"), getPostLikers)
 
 router.patch("/:postId/like", verifyAccessToken, authWriteLimiter, requireObjectId("postId"), likePost)
 
@@ -59,6 +59,7 @@ router.post(
 router.get(
   "/:postId/comments/:commentId/likes",
   verifyAccessToken,
+  authReadLimiter,
   requireObjectId("postId"),
   requireObjectId("commentId"),
   getCommentLikers

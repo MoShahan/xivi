@@ -100,6 +100,30 @@ async function broadcastPresence(userId, online) {
   }
 }
 
+/** Light per-socket flood guard for join/typing (sliding 10s window). */
+const SOCKET_EVENT_WINDOW_MS = 10_000
+const SOCKET_JOIN_MAX = 30
+const SOCKET_TYPING_MAX = 40
+
+function createSocketEventGuard() {
+  /** @type {Map<string, number[]>} */
+  const stampsByKey = new Map()
+
+  return function allowSocketEvent(key, max) {
+    const now = Date.now()
+    const cutoff = now - SOCKET_EVENT_WINDOW_MS
+    const prev = stampsByKey.get(key) || []
+    const recent = prev.filter(t => t > cutoff)
+    if (recent.length >= max) {
+      stampsByKey.set(key, recent)
+      return false
+    }
+    recent.push(now)
+    stampsByKey.set(key, recent)
+    return true
+  }
+}
+
 /**
  * Attach Socket.io to the HTTP server. No-op extra secrets - JWT from handshake.auth.token.
  * @param {import("http").Server} httpServer
@@ -135,11 +159,13 @@ export function attachRealtime(httpServer) {
 
   server.on("connection", socket => {
     const userId = socket.userId
+    const allowSocketEvent = createSocketEventGuard()
     addUserSocket(userId, socket.id)
     socket.join(`user:${userId}`)
     void broadcastPresence(userId, true)
 
     socket.on("join", async conversationId => {
+      if (!allowSocketEvent(`${socket.id}:join`, SOCKET_JOIN_MAX)) return
       if (!isValidObjectId(conversationId)) return
       const convo = await Conversation.findById(conversationId).select("participants")
       if (!convo) return
@@ -154,6 +180,7 @@ export function attachRealtime(httpServer) {
     })
 
     socket.on("typing", async payload => {
+      if (!allowSocketEvent(`${socket.id}:typing`, SOCKET_TYPING_MAX)) return
       const conversationId = payload?.conversationId
       if (!isValidObjectId(conversationId)) return
       const convo = await Conversation.findById(conversationId).select("participants")

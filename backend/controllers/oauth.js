@@ -67,10 +67,11 @@ export const oauthCallback = async (req, res, next) => {
 
     // A7: never silent-link by email alone (account takeover). Existing password
     // accounts must sign in first; future explicit-link flow can be added later.
+    // Use generic `failed` (not account_exists) to avoid email enumeration.
     if (!user && profile.email) {
       const emailOwner = await User.findOne({ email: profile.email.toLowerCase() }).select("_id")
       if (emailOwner) {
-        return redirectError(res, "account_exists")
+        return redirectError(res, "failed")
       }
     }
 

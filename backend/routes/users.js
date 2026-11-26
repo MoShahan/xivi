@@ -27,13 +27,13 @@ import {
 } from "../controllers/users.js"
 import { requireObjectId } from "../lib/objectId.js"
 import { requireAdmin, verifyAccessToken } from "../middleware/auth.js"
-import { authCreateLimiter, authWriteLimiter } from "../middleware/rateLimit.js"
+import { authCreateLimiter, authReadLimiter, authWriteLimiter } from "../middleware/rateLimit.js"
 import { uploadPicture } from "../middleware/upload.js"
 
 const router = express.Router()
 
-router.get("/discover", verifyAccessToken, discoverUsers)
-router.get("/mention-suggest", verifyAccessToken, mentionSuggest)
+router.get("/discover", verifyAccessToken, authReadLimiter, discoverUsers)
+router.get("/mention-suggest", verifyAccessToken, authReadLimiter, mentionSuggest)
 
 router.patch("/me", verifyAccessToken, authWriteLimiter, uploadPicture, updateProfile)
 
@@ -61,8 +61,8 @@ router.delete(
   cancelFriendRequest
 )
 router.delete("/me/friends/:friendId", verifyAccessToken, authWriteLimiter, requireObjectId("friendId"), unfriend)
-router.get("/me/following", verifyAccessToken, listFollowing)
-router.get("/me/blocks", verifyAccessToken, listMyBlocks)
+router.get("/me/following", verifyAccessToken, authReadLimiter, listFollowing)
+router.get("/me/blocks", verifyAccessToken, authReadLimiter, listMyBlocks)
 
 router.post("/:id/deactivate", verifyAccessToken, requireAdmin, requireObjectId("id"), deactivateUser)
 router.post("/:id/reactivate", verifyAccessToken, requireAdmin, requireObjectId("id"), reactivateUser)
@@ -74,9 +74,9 @@ router.post("/:id/block", verifyAccessToken, authWriteLimiter, requireObjectId("
 router.delete("/:id/block", verifyAccessToken, authWriteLimiter, requireObjectId("id"), unblockUser)
 router.get("/:id/relationship", verifyAccessToken, requireObjectId("id"), getUserRelationship)
 
-router.get("/:id/friends", verifyAccessToken, requireObjectId("id"), getUserFriends)
-router.get("/:id/following", verifyAccessToken, requireObjectId("id"), getUserFollowing)
-router.get("/:id/followers", verifyAccessToken, requireObjectId("id"), getUserFollowers)
+router.get("/:id/friends", verifyAccessToken, authReadLimiter, requireObjectId("id"), getUserFriends)
+router.get("/:id/following", verifyAccessToken, authReadLimiter, requireObjectId("id"), getUserFollowing)
+router.get("/:id/followers", verifyAccessToken, authReadLimiter, requireObjectId("id"), getUserFollowers)
 
 router.get("/:id", verifyAccessToken, requireObjectId("id"), getUser)
 

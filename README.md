@@ -192,9 +192,13 @@ Runs on pull requests and on pushes to `main`. A new commit on the same branch c
 
 ## Auth note
 
-The API uses **Bearer JWTs** (`Authorization: Bearer <accessToken>`), not cookie sessions. Access and refresh tokens are issued on login/register; refresh tokens are **rotated and stored hashed** server-side; `POST /auth/logout` revokes the session. The frontend refreshes silently on `401`. See [API overview](./docs/API.md).
+The API uses **Bearer JWTs** (`Authorization: Bearer <accessToken>`), not cookie sessions. Access and refresh tokens are issued on login/register; refresh tokens are **rotated and stored hashed** server-side; `POST /auth/logout` revokes refresh sessions. Access JWTs are **not** server-revoked and remain valid until expiry (default `15m` via `ACCESS_TOKEN_EXPIRES`). The frontend refreshes silently on `401`. See [API overview](./docs/API.md).
 
-**Residual risk:** access + refresh JWTs are kept in the browser (Redux Persist / localStorage). Any XSS that can read storage can steal the session. Mitigations in place include Helmet CSP on the API, CSP/security headers on Next.js, input escaping via React, and short-lived access tokens (default `1h`). Do **not** switch to HTTP-only cookies unless you deliberately redesign auth.
+**Residual risks:**
+
+- Access + refresh JWTs are kept in the browser (Redux Persist / localStorage). XSS that can read storage can steal the session until access expiry / refresh revoke. Mitigations: Helmet CSP on the API, CSP/security headers on Next.js, React text escaping (no HTML sinks), short access TTL. Do **not** switch to HTTP-only cookies unless you deliberately redesign auth.
+- Uploaded images use **public ImageKit CDN URLs**; anyone with the link can view them without app auth.
+- Profiles, posts, and friend lists are visible to **any authenticated user** (social product default), subject to blocks.
 
 ---
 

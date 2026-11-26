@@ -38,3 +38,19 @@ export const authCreateLimiter = rateLimit({
     return `ip:${req.ip}`
   },
 })
+
+/**
+ * Authenticated read/scrape limiter for heavy list GETs (feed, discover, messages, notifications).
+ * Apply after `verifyAccessToken`. Generous enough for normal UX; blocks bulk scraping.
+ */
+export const authReadLimiter = rateLimit({
+  ...base,
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  message: { error: "Too many requests. Please try again later." },
+  keyGenerator: req => {
+    const uid = req.user?.id
+    if (uid) return `read:${uid}`
+    return `ip:${req.ip}`
+  },
+})

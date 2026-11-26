@@ -10,8 +10,8 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   invalid_state: "Sign-in expired. Please try again.",
   provider_account: "Couldn’t read your account from the provider.",
   no_email: "Your provider account has no email, so we can’t create an account.",
-  account_exists:
-    "An account with that email already exists. Sign in with your password first, then link social login later.",
+  // Legacy code; backend now sends `failed` to avoid confirming email existence.
+  account_exists: "Sign-in failed. Please try again.",
   failed: "Sign-in failed. Please try again.",
 }
 
