@@ -11,7 +11,7 @@ function workspaceEslint(workspace, files) {
     .filter(file => file && !file.startsWith(".."))
   if (rel.length === 0) return []
   const quoted = rel.map(file => `"${file.replaceAll('"', '\\"')}"`).join(" ")
-  return `npm exec -w ${workspace} -- eslint ${quoted}`
+  return `npm exec -w ${workspace} -- eslint --fix ${quoted}`
 }
 
 export default {
