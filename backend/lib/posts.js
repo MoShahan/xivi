@@ -97,6 +97,26 @@ function authorSnapshot(author) {
   }
 }
 
+function mentionSnapshot(mention, byId) {
+  const userId = mention?.userId ? String(mention.userId) : ""
+  const display = typeof mention?.display === "string" ? mention.display : ""
+  if (!userId) return null
+  const user = byId[userId]
+  return {
+    userId,
+    display: display || (user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() : ""),
+    firstName: user?.firstName || "",
+    lastName: user?.lastName || "",
+    picturePath: user?.picturePath || "",
+    avatarColor: user?.avatarColor || "#314F3B",
+  }
+}
+
+function formatMentions(mentions, byId) {
+  if (!Array.isArray(mentions)) return []
+  return mentions.map(m => mentionSnapshot(m, byId)).filter(Boolean)
+}
+
 function formatComment(comment, byId) {
   // Legacy bare string comments
   if (typeof comment === "string") {
@@ -107,6 +127,7 @@ function formatComment(comment, byId) {
       createdAt: undefined,
       editedAt: null,
       likes: {},
+      mentions: [],
       user: null,
     }
   }
@@ -119,6 +140,7 @@ function formatComment(comment, byId) {
     createdAt: raw.createdAt,
     editedAt: raw.editedAt || null,
     likes: serializeLikes(raw.likes),
+    mentions: formatMentions(raw.mentions, byId),
     user: authorSnapshot(byId[String(raw.userId)]),
   }
 }
@@ -137,10 +159,18 @@ export async function withAuthors(posts, options = {}) {
   const ids = new Set()
   for (const post of list) {
     if (post.userId) ids.add(String(post.userId))
+    for (const m of post.mentions || []) {
+      if (m?.userId) ids.add(String(m.userId))
+    }
     for (const c of post.comments || []) {
       if (c && typeof c === "object" && c.userId) {
         const cid = String(c.userId)
         if (!hideSet.has(cid)) ids.add(cid)
+      }
+      if (c && typeof c === "object") {
+        for (const m of c.mentions || []) {
+          if (m?.userId) ids.add(String(m.userId))
+        }
       }
     }
   }
@@ -161,6 +191,7 @@ export async function withAuthors(posts, options = {}) {
     return {
       ...post,
       likes: serializeLikes(post.likes),
+      mentions: formatMentions(post.mentions, byId),
       comments: comments.map(c => formatComment(c, byId)),
       user: authorSnapshot(author),
     }

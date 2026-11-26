@@ -1,12 +1,25 @@
 import { assertNotBlocked, assertVisibleUser, excludeHiddenAuthors, hiddenUserIdsForRequest } from "../lib/blocks.js"
 import { assertFeatureEnabled } from "../lib/features.js"
 import { uploadImageBuffer } from "../lib/imagekit.js"
+import { newlyMentionedUserIds, resolveMentions } from "../lib/mentions.js"
 import { createNotification } from "../lib/notifications.js"
 import { createdAtFilter, pageFromDocs, parseCursorPagination } from "../lib/pagination.js"
 import { COMMENTS_PER_POST_MAX, graphemeLength, POST_DESCRIPTION_MAX } from "../lib/postLimits.js"
 import { likesMapKeys, parseLikersPagination, resolveLikersPage, withAuthors } from "../lib/posts.js"
 import Post from "../models/Post.js"
 import User from "../models/User.js"
+
+function notifyMentions({ recipientIds, actorId, postId, commentId = null }) {
+  for (const recipientId of recipientIds || []) {
+    void createNotification({
+      recipientId,
+      actorId,
+      type: "mention",
+      postId,
+      commentId,
+    })
+  }
+}
 
 async function presentPosts(req, posts) {
   return withAuthors(posts, { hideUserIds: await hiddenUserIdsForRequest(req) })
@@ -37,11 +50,27 @@ export const createPost = async (req, res, next) => {
       url = uploaded.url || ""
     }
 
-    const newPost = new Post({ description, userId, url, likes: {}, comments: [] })
+    const mentions = await resolveMentions({
+      text: description,
+      mentionedUserIds: req.body.mentionedUserIds,
+      actorId: userId,
+    })
+
+    const newPost = new Post({ description, userId, url, likes: {}, comments: [], mentions })
     await newPost.save()
+
+    notifyMentions({
+      recipientIds: newlyMentionedUserIds([], mentions),
+      actorId: userId,
+      postId: String(newPost._id),
+    })
+
     const [formatted] = await presentPosts(req, [newPost])
     res.status(201).json({ post: formatted })
   } catch (e) {
+    if (e.status && e.expose) {
+      return res.status(e.status).json({ error: e.message })
+    }
     if (e.message?.includes("IMAGEKIT_PRIVATE_KEY")) {
       return res.status(503).json({ error: "Image upload is not configured" })
     }
@@ -232,7 +261,13 @@ export const addComment = async (req, res, next) => {
       })
     }
 
-    post.comments.push({ userId, text, likes: {} })
+    const mentions = await resolveMentions({
+      text,
+      mentionedUserIds: req.body.mentionedUserIds,
+      actorId: userId,
+    })
+
+    post.comments.push({ userId, text, likes: {}, mentions })
     await post.save()
 
     const added = post.comments[post.comments.length - 1]
@@ -243,12 +278,18 @@ export const addComment = async (req, res, next) => {
       postId: String(post._id),
       commentId: added?._id ? String(added._id) : null,
     })
+    notifyMentions({
+      recipientIds: newlyMentionedUserIds([], mentions),
+      actorId: userId,
+      postId: String(post._id),
+      commentId: added?._id ? String(added._id) : null,
+    })
 
     const [formatted] = await presentPosts(req, [post])
     res.status(201).json({ updatedPost: formatted })
   } catch (e) {
-    if (e.status === 403 && e.expose) {
-      return res.status(403).json({ error: e.message })
+    if (e.status && e.expose) {
+      return res.status(e.status).json({ error: e.message })
     }
     next(e)
   }
@@ -376,16 +417,38 @@ export const editComment = async (req, res, next) => {
       return res.status(403).json({ error: "You can only edit your own comments" })
     }
 
-    if (comment.text !== text) {
-      comment.text = text
+    const prevMentions = (comment.mentions || []).map(m =>
+      m?.toObject ? m.toObject() : { userId: m?.userId, display: m?.display }
+    )
+    const mentions = await resolveMentions({
+      text,
+      mentionedUserIds: req.body.mentionedUserIds,
+      actorId: userId,
+    })
+
+    const textChanged = comment.text !== text
+    const mentionsChanged = JSON.stringify(prevMentions) !== JSON.stringify(mentions)
+    comment.text = text
+    comment.mentions = mentions
+    if (textChanged || mentionsChanged) {
       comment.editedAt = new Date()
     }
     post.markModified("comments")
     await post.save()
 
+    notifyMentions({
+      recipientIds: newlyMentionedUserIds(prevMentions, mentions),
+      actorId: userId,
+      postId: String(post._id),
+      commentId: String(comment._id),
+    })
+
     const [formatted] = await presentPosts(req, [post])
     res.status(200).json({ message: "Comment updated", updatedPost: formatted })
   } catch (e) {
+    if (e.status && e.expose) {
+      return res.status(e.status).json({ error: e.message })
+    }
     next(e)
   }
 }
@@ -503,17 +566,39 @@ export const updatePost = async (req, res, next) => {
       return res.status(400).json({ error: `Post text must be ${POST_DESCRIPTION_MAX} characters or fewer` })
     }
 
-    const contentChanged = (post.description || "") !== description || (post.url || "") !== url
+    const prevMentions = (post.mentions || []).map(m =>
+      m?.toObject ? m.toObject() : { userId: m?.userId, display: m?.display }
+    )
+    const mentions = await resolveMentions({
+      text: description,
+      mentionedUserIds: req.body.mentionedUserIds,
+      actorId: userId,
+    })
+
+    const contentChanged =
+      (post.description || "") !== description ||
+      (post.url || "") !== url ||
+      JSON.stringify(prevMentions) !== JSON.stringify(mentions)
     post.description = description
     post.url = url
+    post.mentions = mentions
     if (contentChanged) {
       post.editedAt = new Date()
     }
     await post.save()
 
+    notifyMentions({
+      recipientIds: newlyMentionedUserIds(prevMentions, mentions),
+      actorId: userId,
+      postId: String(post._id),
+    })
+
     const [formatted] = await presentPosts(req, [post])
     res.status(200).json({ message: "Post updated", updatedPost: formatted })
   } catch (e) {
+    if (e.status && e.expose) {
+      return res.status(e.status).json({ error: e.message })
+    }
     if (e.message?.includes("IMAGEKIT_PRIVATE_KEY")) {
       return res.status(503).json({ error: "Image upload is not configured" })
     }

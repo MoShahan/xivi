@@ -21,6 +21,7 @@ import {
   getUserFollowers,
   getUserFollowing,
   getUserFriends,
+  mentionSuggest,
   reactivateUser,
   updateProfile,
 } from "../controllers/users.js"
@@ -32,6 +33,7 @@ import { uploadPicture } from "../middleware/upload.js"
 const router = express.Router()
 
 router.get("/discover", verifyAccessToken, discoverUsers)
+router.get("/mention-suggest", verifyAccessToken, mentionSuggest)
 
 router.patch("/me", verifyAccessToken, authWriteLimiter, uploadPicture, updateProfile)
 

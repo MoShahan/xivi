@@ -260,6 +260,124 @@ export const updateProfile = async (req, res, next) => {
   }
 }
 
+const MENTION_SUGGEST_DEFAULT = 8
+const MENTION_SUGGEST_MAX = 15
+const MENTION_CARD_FIELDS = "_id firstName lastName picturePath avatarColor"
+
+function toMentionCard(u) {
+  return {
+    _id: String(u._id),
+    firstName: u.firstName,
+    lastName: u.lastName,
+    picturePath: u.picturePath || "",
+    avatarColor: u.avatarColor || DEFAULT_AVATAR_COLOR,
+  }
+}
+
+function nameMatchesQuery(user, qLower) {
+  if (!qLower) return true
+  const first = String(user.firstName || "").toLowerCase()
+  const last = String(user.lastName || "").toLowerCase()
+  const full = `${first} ${last}`.trim()
+  return first.includes(qLower) || last.includes(qLower) || full.includes(qLower)
+}
+
+/**
+ * Lightweight @mention picker: network-first (friends ∪ following), then name search fill.
+ * Query: `?q=&limit=` (default 8, max 15). Never returns email.
+ */
+export const mentionSuggest = async (req, res, next) => {
+  try {
+    const authUserId = req.user?.id
+    if (!authUserId) {
+      return res.status(401).json({ error: "Unauthenticated" })
+    }
+
+    const q = typeof req.query.q === "string" ? req.query.q.trim() : ""
+    const qLower = q.toLowerCase()
+    const rawLimit = Number.parseInt(String(req.query.limit ?? String(MENTION_SUGGEST_DEFAULT)), 10)
+    const limit = Math.min(
+      MENTION_SUGGEST_MAX,
+      Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : MENTION_SUGGEST_DEFAULT
+    )
+
+    const hidden = await hiddenUserIdsForRequest(req)
+    const hideSet = new Set([String(authUserId), ...hidden.map(String)])
+
+    const me = await User.findById(authUserId).select("friends following").lean()
+    if (!me) {
+      return res.status(401).json({ error: "Unauthenticated" })
+    }
+
+    const networkIds = [
+      ...new Set([...(me.friends || []).map(id => String(id)), ...(me.following || []).map(id => String(id))]),
+    ].filter(id => id && !hideSet.has(id))
+
+    const results = []
+    const seen = new Set()
+
+    if (networkIds.length > 0) {
+      const networkUsers = await User.find({
+        _id: { $in: networkIds },
+        isActive: { $ne: false },
+      })
+        .select(MENTION_CARD_FIELDS)
+        .lean()
+
+      const matched = networkUsers
+        .filter(u => nameMatchesQuery(u, qLower))
+        .sort((a, b) => {
+          const an = `${a.firstName || ""} ${a.lastName || ""}`.trim().toLowerCase()
+          const bn = `${b.firstName || ""} ${b.lastName || ""}`.trim().toLowerCase()
+          return an.localeCompare(bn)
+        })
+
+      for (const u of matched) {
+        const id = String(u._id)
+        if (seen.has(id)) continue
+        seen.add(id)
+        results.push(toMentionCard(u))
+        if (results.length >= limit) break
+      }
+    }
+
+    if (results.length < limit) {
+      const filter = {
+        _id: { $nin: [...hideSet, ...seen] },
+        isActive: { $ne: false },
+      }
+      if (q) {
+        const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+        const re = new RegExp(escaped, "i")
+        filter.$or = [{ firstName: re }, { lastName: re }]
+      } else if (networkIds.length === 0) {
+        // Empty query with no network: do not dump the whole site.
+        return res.status(200).json({ users: results })
+      } else {
+        // Empty query already filled from network; no global fill.
+        return res.status(200).json({ users: results })
+      }
+
+      const fill = await User.find(filter)
+        .select(MENTION_CARD_FIELDS)
+        .sort({ createdAt: -1 })
+        .limit(limit - results.length)
+        .lean()
+
+      for (const u of fill) {
+        const id = String(u._id)
+        if (seen.has(id) || hideSet.has(id)) continue
+        seen.add(id)
+        results.push(toMentionCard(u))
+      }
+    }
+
+    res.status(200).json({ users: results })
+  } catch (e) {
+    next(e)
+  }
+}
+
 /**
  * Discover users: recent registrants by default, or name search when `q` is set.
  * Excludes the authenticated user. Cursor pagination: `?limit=&cursor=` (default 10, max 30).
