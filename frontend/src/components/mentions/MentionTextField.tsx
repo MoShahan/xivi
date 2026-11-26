@@ -50,6 +50,7 @@ const MentionTextField = React.forwardRef<HTMLInputElement, MentionTextFieldProp
       truncate,
       onKeyDown,
       inputRef: inputRefProp,
+      sx,
       ...inputProps
     },
     ref
@@ -211,12 +212,20 @@ const MentionTextField = React.forwardRef<HTMLInputElement, MentionTextFieldProp
         <Box ref={anchorRef} sx={{ position: "relative", flex: 1, minWidth: 0, width: "100%" }}>
           <InputBase
             {...inputProps}
+            fullWidth
             inputRef={setInputRef}
             value={value}
             onChange={handleChange}
             onSelect={handleSelect}
             onClick={handleSelect}
             onKeyDown={handleKeyDown}
+            sx={[
+              {
+                width: "100%",
+                "& .MuiInputBase-input": { width: "100%" },
+              },
+              ...(sx == null ? [] : Array.isArray(sx) ? sx : [sx]),
+            ]}
             inputProps={{
               ...inputProps.inputProps,
               "aria-autocomplete": "list",
