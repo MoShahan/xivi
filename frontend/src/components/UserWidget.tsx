@@ -5,10 +5,13 @@ import {
   Block,
   CalendarMonthOutlined,
   Facebook,
+  HowToReg,
   Instagram,
   LinkedIn,
   LocationOnOutlined,
+  LockOpen,
   ManageAccountsOutlined,
+  PersonOff,
   WorkOutlineOutlined,
   X,
 } from "@mui/icons-material"
@@ -280,6 +283,44 @@ const UserWidget = ({ userId, url, isOwnProfile: isOwnProfileProp, onUserLoaded 
   )
 
   const coverRadius = `${Number(theme.shape.borderRadius) * 1.25}px`
+  const showAdminStatusAction = viewerIsAdmin && user.role !== "admin"
+  const coverIconSx = {
+    width: 32,
+    height: 32,
+    borderRadius: 2,
+    bgcolor: (t: typeof theme) => alpha(t.palette.common.white, 0.94),
+    border: (t: typeof theme) => `1px solid ${alpha(t.palette.common.black, 0.08)}`,
+    boxShadow: (t: typeof theme) => `0 1px 2px ${alpha(t.palette.common.black, 0.18)}`,
+    "&:hover": { bgcolor: "common.white" },
+  }
+
+  const toggleActiveStatus = () => {
+    void (async () => {
+      setModBusy(true)
+      try {
+        if (user.isActive === false) {
+          const { data } = await api.post<{ message: string; user: User }>(`/users/${userId}/reactivate`)
+          setFetched(prev => (prev ? { ...prev, ...data.user } : data.user))
+          success(data.message || "User reactivated")
+        } else {
+          if (
+            !window.confirm(
+              `Deactivate ${user.firstName} ${user.lastName}? They will not be able to log in.`
+            )
+          ) {
+            return
+          }
+          const { data } = await api.post<{ message: string; user: User }>(`/users/${userId}/deactivate`)
+          setFetched(prev => (prev ? { ...prev, ...data.user } : data.user))
+          success(data.message || "User deactivated")
+        }
+      } catch (err: unknown) {
+        toastError(getErrorMessage(err, "Could not update user status"))
+      } finally {
+        setModBusy(false)
+      }
+    })()
+  }
 
   return (
     <WidgetWrapper sx={{ p: 0, overflow: "visible" }}>
@@ -295,95 +336,74 @@ const UserWidget = ({ userId, url, isOwnProfile: isOwnProfileProp, onUserLoaded 
         }}
       >
         {isOwnProfile ? null : (
-          <Box sx={{ position: "absolute", top: 8, right: 8, zIndex: 2 }}>
-            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 0.75 }}>
-              {user.blockedByMe ? (
-                <Button
-                  size="small"
-                  variant="contained"
-                  onClick={() => setUnblockOpen(true)}
-                  sx={{
-                    textTransform: "none",
-                    fontWeight: 600,
-                    fontSize: "0.75rem",
-                    bgcolor: theme => alpha(theme.palette.common.white, 0.94),
-                    color: "primary.main",
-                    "&:hover": { bgcolor: "common.white" },
-                  }}
-                >
-                  Unblock
-                </Button>
-              ) : (
-                <>
-                  <RelationshipActions userId={userId} onCover onChanged={refreshProfile} />
-                  <Button
+          <Box
+            sx={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+              zIndex: 2,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "flex-end",
+              flexWrap: "wrap",
+              gap: 0.5,
+              maxWidth: "calc(100% - 16px)",
+            }}
+          >
+            {user.blockedByMe ? (
+              <Tooltip title="Unblock">
+                <span>
+                  <IconButton
                     size="small"
-                    variant="contained"
-                    startIcon={<Block sx={{ fontSize: "1rem" }} />}
-                    onClick={() => setBlockOpen(true)}
-                    sx={{
-                      textTransform: "none",
-                      fontWeight: 600,
-                      fontSize: "0.75rem",
-                      bgcolor: theme => alpha(theme.palette.common.white, 0.94),
-                      color: "error.main",
-                      "&:hover": { bgcolor: "common.white" },
-                    }}
+                    onClick={() => setUnblockOpen(true)}
+                    aria-label="Unblock"
+                    sx={{ ...coverIconSx, color: "primary.main" }}
                   >
-                    Block
-                  </Button>
-                </>
-              )}
-              {!user.blockedByMe && viewerIsAdmin && user.role !== "admin" ? (
-                <Button
-                  size="small"
-                  color={user.isActive === false ? "primary" : "error"}
-                  variant="contained"
-                  disabled={modBusy}
-                  onClick={() => {
-                    void (async () => {
-                      setModBusy(true)
-                      try {
-                        if (user.isActive === false) {
-                          const { data } = await api.post<{ message: string; user: User }>(
-                            `/users/${userId}/reactivate`
-                          )
-                          setFetched(prev => (prev ? { ...prev, ...data.user } : data.user))
-                          success(data.message || "User reactivated")
-                        } else {
-                          if (
-                            !window.confirm(
-                              `Deactivate ${user.firstName} ${user.lastName}? They will not be able to log in.`
-                            )
-                          ) {
-                            return
-                          }
-                          const { data } = await api.post<{ message: string; user: User }>(
-                            `/users/${userId}/deactivate`
-                          )
-                          setFetched(prev => (prev ? { ...prev, ...data.user } : data.user))
-                          success(data.message || "User deactivated")
-                        }
-                      } catch (err: unknown) {
-                        toastError(getErrorMessage(err, "Could not update user status"))
-                      } finally {
-                        setModBusy(false)
-                      }
-                    })()
-                  }}
-                  sx={{
-                    textTransform: "none",
-                    fontWeight: 600,
-                    fontSize: "0.75rem",
-                    bgcolor: theme => alpha(theme.palette.common.white, 0.94),
-                    color: user.isActive === false ? "primary.main" : "error.main",
-                    "&:hover": { bgcolor: "common.white" },
-                  }}
-                >
-                  {user.isActive === false ? "Reactivate" : "Deactivate"}
-                </Button>
-              ) : null}
-            </Box>
+                    <LockOpen sx={{ fontSize: "1.1rem" }} />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            ) : (
+              <>
+                <RelationshipActions userId={userId} onCover onChanged={refreshProfile} />
+                {showAdminStatusAction ? (
+                  <>
+                    <Tooltip title="Block">
+                      <span>
+                        <IconButton
+                          size="small"
+                          onClick={() => setBlockOpen(true)}
+                          aria-label="Block"
+                          sx={{ ...coverIconSx, color: "error.main" }}
+                        >
+                          <Block sx={{ fontSize: "1.1rem" }} />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                    <Tooltip title={user.isActive === false ? "Reactivate" : "Deactivate"}>
+                      <span>
+                        <IconButton
+                          size="small"
+                          disabled={modBusy}
+                          onClick={toggleActiveStatus}
+                          aria-label={user.isActive === false ? "Reactivate" : "Deactivate"}
+                          sx={{
+                            ...coverIconSx,
+                            color: user.isActive === false ? "primary.main" : "error.main",
+                          }}
+                        >
+                          {user.isActive === false ? (
+                            <HowToReg sx={{ fontSize: "1.1rem" }} />
+                          ) : (
+                            <PersonOff sx={{ fontSize: "1.1rem" }} />
+                          )}
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                  </>
+                ) : null}
+              </>
+            )}
           </Box>
         )}
       </Box>

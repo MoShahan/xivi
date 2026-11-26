@@ -267,10 +267,12 @@ const RelationshipActions = ({
       router.push(`/messages/${conversation._id}`)
     })
 
+  const iconOnly = dense || onCover
+
   const messageButton = canMessage ? (
     <Tooltip title="Message">
       <span>
-        {dense ? (
+        {iconOnly ? (
           <IconButton
             size="small"
             disabled={busy}
@@ -296,7 +298,7 @@ const RelationshipActions = ({
     </Tooltip>
   ) : null
 
-  if (dense) {
+  if (iconOnly) {
     return (
       <Box
         sx={{
