@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useCallback, useEffect, useId, useRef, useState } from "react"
+import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react"
 import {
   Box,
   CircularProgress,
@@ -14,6 +14,7 @@ import {
   Paper,
   Popper,
   Typography,
+  useTheme,
 } from "@mui/material"
 
 import UserImage from "@/components/UserImage"
@@ -23,8 +24,10 @@ import {
   mentionDisplayOf,
   type MentionRef,
   MENTIONS_MAX,
+  mentionsForHighlight,
   type MentionSuggestUser,
   pruneMentionedUserIds,
+  splitRichText,
 } from "@/lib/mentions"
 
 export type MentionTextFieldProps = Omit<InputBaseProps, "onChange" | "value"> & {
@@ -55,16 +58,36 @@ const MentionTextField = React.forwardRef<HTMLInputElement, MentionTextFieldProp
     },
     ref
   ) {
+    const theme = useTheme()
     const listId = useId()
     const anchorRef = useRef<HTMLElement | null>(null)
     const innerInputRef = useRef<HTMLInputElement | null>(null)
+    const highlightRef = useRef<HTMLDivElement | null>(null)
     const [open, setOpen] = useState(false)
     const [query, setQuery] = useState("")
     const [mentionStart, setMentionStart] = useState<number | null>(null)
     const [options, setOptions] = useState<MentionSuggestUser[]>([])
     const [loading, setLoading] = useState(false)
     const [highlight, setHighlight] = useState(0)
-    const displayByIdRef = useRef(new Map<string, string>())
+    const [displayById, setDisplayById] = useState<Map<string, string>>(() => new Map())
+
+    useEffect(() => {
+      if (!knownMentions.length) return
+      setDisplayById(prev => {
+        let changed = false
+        const next = new Map(prev)
+        for (const m of knownMentions) {
+          const id = String(m.userId || "")
+          const display = (m.display || "").trim()
+          if (!id || !display) continue
+          if (next.get(id) !== display) {
+            next.set(id, display)
+            changed = true
+          }
+        }
+        return changed ? next : prev
+      })
+    }, [knownMentions])
 
     const setInputRef = useCallback(
       (node: HTMLInputElement | null) => {
@@ -79,19 +102,70 @@ const MentionTextField = React.forwardRef<HTMLInputElement, MentionTextFieldProp
       [inputRefProp, ref]
     )
 
+    const knownForPrune = useMemo(
+      () => [
+        ...knownMentions,
+        ...[...displayById.entries()].map(([userId, display]) => ({ userId, display })),
+      ],
+      [displayById, knownMentions]
+    )
+
+    const highlightMentions = useMemo(
+      () =>
+        mentionsForHighlight(
+          mentionedUserIds,
+          knownMentions,
+          [...displayById.entries()].map(([userId, display]) => ({ userId, display }))
+        ),
+      [displayById, knownMentions, mentionedUserIds]
+    )
+
+    const richParts = useMemo(() => splitRichText(value, highlightMentions), [highlightMentions, value])
+
+    const syncHighlightMetrics = useCallback(() => {
+      const input = innerInputRef.current
+      const overlay = highlightRef.current
+      const anchor = anchorRef.current
+      if (!input || !overlay || !anchor) return
+      const inputRect = input.getBoundingClientRect()
+      const anchorRect = anchor.getBoundingClientRect()
+      overlay.style.top = `${inputRect.top - anchorRect.top + anchor.scrollTop}px`
+      overlay.style.left = `${inputRect.left - anchorRect.left + anchor.scrollLeft}px`
+      overlay.style.width = `${input.clientWidth}px`
+      overlay.style.height = `${input.clientHeight}px`
+      const cs = getComputedStyle(input)
+      overlay.style.font = cs.font
+      overlay.style.letterSpacing = cs.letterSpacing
+      overlay.style.lineHeight = cs.lineHeight
+      overlay.style.padding = cs.padding
+      overlay.style.boxSizing = cs.boxSizing
+      overlay.scrollTop = input.scrollTop
+      overlay.scrollLeft = input.scrollLeft
+    }, [])
+
+    useLayoutEffect(() => {
+      syncHighlightMetrics()
+    }, [syncHighlightMetrics, value, sx, richParts])
+
+    useEffect(() => {
+      const input = innerInputRef.current
+      if (!input || typeof ResizeObserver === "undefined") return
+      const ro = new ResizeObserver(() => syncHighlightMetrics())
+      ro.observe(input)
+      if (input.parentElement) ro.observe(input.parentElement)
+      return () => ro.disconnect()
+    }, [syncHighlightMetrics])
+
     const applyValue = useCallback(
       (next: string) => {
         const clipped = truncate ? truncate(next) : maxLength != null ? next.slice(0, maxLength) : next
         onChange(clipped)
-        const pruned = pruneMentionedUserIds(clipped, mentionedUserIds, [
-          ...knownMentions,
-          ...[...displayByIdRef.current.entries()].map(([userId, display]) => ({ userId, display })),
-        ])
+        const pruned = pruneMentionedUserIds(clipped, mentionedUserIds, knownForPrune)
         if (pruned.length !== mentionedUserIds.length || pruned.some((id, i) => id !== mentionedUserIds[i])) {
           onMentionedUserIdsChange(pruned)
         }
       },
-      [knownMentions, maxLength, mentionedUserIds, onChange, onMentionedUserIdsChange, truncate]
+      [knownForPrune, maxLength, mentionedUserIds, onChange, onMentionedUserIdsChange, truncate]
     )
 
     const closePicker = useCallback(() => {
@@ -137,7 +211,11 @@ const MentionTextField = React.forwardRef<HTMLInputElement, MentionTextFieldProp
         const after = value.slice(cursor)
         const insertion = `@${display} `
         const next = `${before}${insertion}${after}`
-        displayByIdRef.current.set(String(user._id), display)
+        setDisplayById(prev => {
+          const nextMap = new Map(prev)
+          nextMap.set(String(user._id), display)
+          return nextMap
+        })
         const nextIds = mentionedUserIds.includes(String(user._id))
           ? mentionedUserIds
           : [...mentionedUserIds, String(user._id)].slice(0, MENTIONS_MAX)
@@ -150,13 +228,27 @@ const MentionTextField = React.forwardRef<HTMLInputElement, MentionTextFieldProp
           const pos = before.length + insertion.length
           el.focus()
           el.setSelectionRange(pos, pos)
+          syncHighlightMetrics()
         })
       },
-      [applyValue, closePicker, mentionStart, mentionedUserIds, onMentionedUserIdsChange, value]
+      [
+        applyValue,
+        closePicker,
+        mentionStart,
+        mentionedUserIds,
+        onMentionedUserIdsChange,
+        syncHighlightMetrics,
+        value,
+      ]
+    )
+
+    const completedDisplays = useMemo(
+      () => highlightMentions.map(m => m.display),
+      [highlightMentions]
     )
 
     const syncMentionState = (nextValue: string, cursor: number) => {
-      const active = getActiveMentionQuery(nextValue, cursor)
+      const active = getActiveMentionQuery(nextValue, cursor, completedDisplays)
       if (!active) {
         closePicker()
         return
@@ -177,6 +269,13 @@ const MentionTextField = React.forwardRef<HTMLInputElement, MentionTextFieldProp
       const el = innerInputRef.current
       if (!el) return
       syncMentionState(value, el.selectionStart ?? value.length)
+    }
+
+    const handleScroll = (e: React.UIEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      const overlay = highlightRef.current
+      if (!overlay) return
+      overlay.scrollTop = e.currentTarget.scrollTop
+      overlay.scrollLeft = e.currentTarget.scrollLeft
     }
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -207,9 +306,50 @@ const MentionTextField = React.forwardRef<HTMLInputElement, MentionTextFieldProp
       onKeyDown?.(e)
     }
 
+    const showHighlight = Boolean(value)
+
     return (
       <ClickAwayListener onClickAway={closePicker}>
         <Box ref={anchorRef} sx={{ position: "relative", flex: 1, minWidth: 0, width: "100%" }}>
+          {showHighlight && (
+            <Box
+              ref={highlightRef}
+              aria-hidden
+              sx={{
+                position: "absolute",
+                overflow: "hidden",
+                pointerEvents: "none",
+                zIndex: 0,
+                whiteSpace: "pre-wrap",
+                overflowWrap: "anywhere",
+                wordBreak: "break-word",
+                color: "text.primary",
+              }}
+            >
+              {richParts.map((part, index) => {
+                if (part.type === "mention") {
+                  return (
+                    <Box
+                      key={`mention-${index}`}
+                      component="span"
+                      sx={{ color: "primary.main", fontWeight: 600 }}
+                    >
+                      {part.value}
+                    </Box>
+                  )
+                }
+                if (part.type === "link") {
+                  return (
+                    <Box key={`link-${index}`} component="span" sx={{ color: "primary.main" }}>
+                      {part.value}
+                    </Box>
+                  )
+                }
+                return <React.Fragment key={`text-${index}`}>{part.value}</React.Fragment>
+              })}
+              {"\n"}
+            </Box>
+          )}
           <InputBase
             {...inputProps}
             fullWidth
@@ -222,16 +362,44 @@ const MentionTextField = React.forwardRef<HTMLInputElement, MentionTextFieldProp
             sx={[
               {
                 width: "100%",
-                "& .MuiInputBase-input": { width: "100%" },
+                position: "relative",
+                zIndex: 1,
               },
               ...(sx == null ? [] : Array.isArray(sx) ? sx : [sx]),
+              {
+                backgroundColor: "transparent",
+                "& .MuiInputBase-input": {
+                  width: "100%",
+                  position: "relative",
+                  zIndex: 1,
+                  ...(showHighlight
+                    ? {
+                        color: "transparent !important",
+                        caretColor: `${theme.palette.text.primary} !important`,
+                        WebkitTextFillColor: "transparent !important",
+                      }
+                    : {}),
+                },
+              },
             ]}
             inputProps={{
               ...inputProps.inputProps,
+              spellCheck: false,
               "aria-autocomplete": "list",
               "aria-controls": open ? listId : undefined,
               "aria-expanded": open,
               role: "combobox",
+              onScroll: handleScroll,
+              style: {
+                ...((inputProps.inputProps as { style?: React.CSSProperties } | undefined)?.style || {}),
+                ...(showHighlight
+                  ? {
+                      color: "transparent",
+                      caretColor: theme.palette.text.primary,
+                      WebkitTextFillColor: "transparent",
+                    }
+                  : {}),
+              },
             }}
           />
           <Popper

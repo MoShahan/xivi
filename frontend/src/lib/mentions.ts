@@ -24,8 +24,16 @@ export function mentionDisplayOf(user: { firstName?: string; lastName?: string }
   return `${user.firstName || ""} ${user.lastName || ""}`.trim()
 }
 
-/** Active `@query` just before `cursor` (query has no spaces after `@` for suggest, or partial name). */
-export function getActiveMentionQuery(text: string, cursor: number): { start: number; query: string } | null {
+/**
+ * Active `@query` just before `cursor`.
+ * Pass `completedDisplays` so a finished `@First Last` stops owning the caret
+ * once the user keeps typing after it.
+ */
+export function getActiveMentionQuery(
+  text: string,
+  cursor: number,
+  completedDisplays: string[] = []
+): { start: number; query: string } | null {
   if (cursor < 0 || cursor > text.length) return null
   const before = text.slice(0, cursor)
   const at = before.lastIndexOf("@")
@@ -34,10 +42,27 @@ export function getActiveMentionQuery(text: string, cursor: number): { start: nu
     const prev = before[at - 1]
     if (prev && !/\s/.test(prev)) return null
   }
+
+  // If this @ is already a selected mention and the caret is past it, do not reopen the picker.
+  const displays = [
+    ...new Set(completedDisplays.map(d => (d || "").trim()).filter(Boolean)),
+  ].sort((a, b) => b.length - a.length)
+  for (const display of displays) {
+    const token = `@${display}`
+    if (at + token.length <= text.length && text.startsWith(token, at)) {
+      const end = at + token.length
+      const next = text[end]
+      const boundaryOk = next == null || !/[\p{L}\p{N}_]/u.test(next)
+      if (boundaryOk && cursor > end) return null
+    }
+  }
+
   const query = before.slice(at + 1)
-  // Abort if newline or another @ inside the token; allow spaces for "First Last" typing.
+  // Abort if newline or another @ inside the token; allow one space for "First Last".
   if (query.includes("\n") || query.includes("@")) return null
   if (query.length > 60) return null
+  // More than one space means the user moved on (e.g. "@Ada Lovelace hello").
+  if ((query.match(/ /g) || []).length > 1) return null
   return { start: at, query }
 }
 
@@ -67,6 +92,30 @@ export function textContainsMention(text: string, display: string): boolean {
     from = idx + 1
   }
   return false
+}
+
+/**
+ * Build mention refs for composer highlighting: only ids that are selected
+ * and whose display label is known (picker insert or existing post/comment).
+ */
+export function mentionsForHighlight(
+  mentionedUserIds: string[],
+  known: MentionRef[] = [],
+  extra: MentionRef[] = []
+): MentionRef[] {
+  const displayById = new Map<string, string>()
+  for (const m of [...known, ...extra]) {
+    const userId = String(m.userId || "")
+    const display = (m.display || "").trim()
+    if (!userId || !display) continue
+    displayById.set(userId, display)
+  }
+  const out: MentionRef[] = []
+  for (const id of mentionedUserIds) {
+    const display = displayById.get(String(id))
+    if (display) out.push({ userId: String(id), display })
+  }
+  return out
 }
 
 type MentionSpan = { start: number; end: number; userId: string; value: string }
