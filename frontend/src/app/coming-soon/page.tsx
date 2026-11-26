@@ -93,7 +93,7 @@ function CommentThreadMockup() {
           name: "Bob Friend",
           initials: "BF",
           indent: true,
-          text: "Agree - especially if we can mention people.",
+          text: "Agree - one indent keeps threads readable.",
         })}
         {row({
           name: "Cara Lee",
@@ -103,7 +103,7 @@ function CommentThreadMockup() {
             <>
               Replying to Bob, same indent.{" "}
               <Box component="span" sx={{ color: mention, fontWeight: 600 }}>
-                @ada
+                @Ada Lovelace
               </Box>{" "}
               what do you think?
             </>
@@ -175,13 +175,12 @@ const ITEMS: RoadmapItem[] = [
     icon: <Block />,
   },
   {
-    title: "Comment replies and @mentions",
+    title: "Comment replies",
     summary:
-      "Reply under a comment, and tag people with @. Mentions land in comments and replies only - not in new posts.",
+      "Reply under a comment with one indent. @mentions already work in posts and comments; replies will reuse the same picker.",
     details: [
-      "Type @ to open a small people picker that filters as you type.",
-      "Choosing someone inserts @username as a link to their profile.",
       "Replies indent once. A reply to a reply stays in that same column - no Reddit-style nesting.",
+      "Top-level comments stay flush; all replies to a thread share one indent column.",
     ],
     mockup: <CommentThreadMockup />,
     icon: <AlternateEmail />,
@@ -193,7 +192,7 @@ const ITEMS: RoadmapItem[] = [
     details: [
       "Hashtags live in the post caption - not a separate tag picker in this pass.",
       "#Travel and #travel count as the same tag. Your original spelling stays in the text.",
-      "Mentions (@name) are people; hashtags (#topic) are topics.",
+      "People tags use @; topic tags use #.",
     ],
     mockup: <HashtagCaptionMockup />,
     icon: <Tag />,

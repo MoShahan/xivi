@@ -33,7 +33,6 @@ import {
   DialogTitle,
   Divider,
   IconButton,
-  InputBase,
   ListItemIcon,
   ListItemText,
   Menu,
@@ -64,6 +63,7 @@ import { useToast } from "@/providers/ToastProvider"
 import { removePost, setPost, setSavedPosts } from "@/state"
 import { type Post, sameUserId } from "@/types/models"
 
+import MentionTextField from "./mentions/MentionTextField"
 import BlockUserDialog from "./BlockUserDialog"
 import EmojiPickerButton, { insertEmojiAtCursor } from "./EmojiPickerButton"
 import ExpandableText from "./ExpandableText"
@@ -122,6 +122,7 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
   const [isComments, setIsComments] = useState(false)
   const [visibleCommentCount, setVisibleCommentCount] = useState(COMMENTS_INITIAL_VISIBLE)
   const [commentText, setCommentText] = useState("")
+  const [commentMentionIds, setCommentMentionIds] = useState<string[]>([])
   const [commentError, setCommentError] = useState<string | undefined>()
   const [isSubmittingComment, setIsSubmittingComment] = useState(false)
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null)
@@ -129,6 +130,7 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
   const [commentMenu, setCommentMenu] = useState<{ anchor: HTMLElement; commentId: string } | null>(null)
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
   const [editCommentText, setEditCommentText] = useState("")
+  const [editCommentMentionIds, setEditCommentMentionIds] = useState<string[]>([])
   const [editCommentError, setEditCommentError] = useState<string | undefined>()
   const [isSavingEdit, setIsSavingEdit] = useState(false)
   const [confirmDeleteCommentId, setConfirmDeleteCommentId] = useState<string | null>(null)
@@ -139,6 +141,7 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
   const [commentLikersId, setCommentLikersId] = useState<string | null>(null)
   const [editOpen, setEditOpen] = useState(false)
   const [editDescription, setEditDescription] = useState("")
+  const [editPostMentionIds, setEditPostMentionIds] = useState<string[]>([])
   const [editPicture, setEditPicture] = useState<File | null>(null)
   const [editRemoveImage, setEditRemoveImage] = useState(false)
   const [editError, setEditError] = useState<string | undefined>()
@@ -240,12 +243,14 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
     }
     const previous = post
     const tempId = `temp-${Date.now()}`
+    const mentionIds = [...commentMentionIds]
     const optimisticComment = {
       _id: tempId,
       userId: String(user._id),
       text,
       createdAt: new Date().toISOString(),
       likes: {},
+      mentions: [],
       user: {
         firstName: user.firstName,
         lastName: user.lastName,
@@ -256,17 +261,22 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
     const optimisticComments = [...(post.comments ?? []), optimisticComment]
     dispatch(setPost({ post: { ...post, comments: optimisticComments } }))
     setCommentText("")
+    setCommentMentionIds([])
     setVisibleCommentCount(optimisticComments.length)
     setCommentError(undefined)
     try {
       setIsSubmittingComment(true)
-      const { data } = await api.post<{ updatedPost: Post }>(`/posts/${post._id}/comments`, { text })
+      const { data } = await api.post<{ updatedPost: Post }>(`/posts/${post._id}/comments`, {
+        text,
+        mentionedUserIds: mentionIds,
+      })
       dispatch(setPost({ post: data.updatedPost }))
       setVisibleCommentCount(data.updatedPost.comments?.length ?? COMMENTS_INITIAL_VISIBLE)
       success("Comment added")
     } catch (err: unknown) {
       dispatch(setPost({ post: previous }))
       setCommentText(text)
+      setCommentMentionIds(mentionIds)
       const msg = getErrorMessage(err, "Failed to add comment")
       setCommentError(msg)
       toastError(msg)
@@ -293,6 +303,7 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
   const openEditPost = () => {
     setMenuAnchor(null)
     setEditDescription(post.description || "")
+    setEditPostMentionIds((post.mentions || []).map(m => String(m.userId)))
     setEditPicture(null)
     setEditRemoveImage(false)
     setEditError(undefined)
@@ -304,6 +315,7 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
     setEditOpen(false)
     setEditPicture(null)
     setEditRemoveImage(false)
+    setEditPostMentionIds([])
     setEditError(undefined)
   }
 
@@ -325,6 +337,7 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
       setEditError(undefined)
       const formData = new FormData()
       formData.append("description", description)
+      formData.append("mentionedUserIds", JSON.stringify(editPostMentionIds))
       if (editRemoveImage && !editPicture) {
         formData.append("removeImage", "true")
       }
@@ -337,6 +350,7 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
       setEditOpen(false)
       setEditPicture(null)
       setEditRemoveImage(false)
+      setEditPostMentionIds([])
       success(data.message || "Post updated")
     } catch (err: unknown) {
       setEditError(getErrorMessage(err, "Failed to update post"))
@@ -364,16 +378,18 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
     info("Opening share…")
   }
 
-  const startEditComment = (commentId: string, currentText: string) => {
+  const startEditComment = (commentId: string, currentText: string, mentionIds: string[] = []) => {
     setCommentMenu(null)
     setEditingCommentId(commentId)
     setEditCommentText(currentText)
+    setEditCommentMentionIds(mentionIds)
     setEditCommentError(undefined)
   }
 
   const cancelEditComment = () => {
     setEditingCommentId(null)
     setEditCommentText("")
+    setEditCommentMentionIds([])
     setEditCommentError(undefined)
   }
 
@@ -392,7 +408,7 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
       setEditCommentError(undefined)
       const { data } = await api.patch<{ message: string; updatedPost: Post }>(
         `/posts/${post._id}/comments/${commentId}`,
-        { text }
+        { text, mentionedUserIds: editCommentMentionIds }
       )
       dispatch(setPost({ post: data.updatedPost }))
       cancelEditComment()
@@ -498,6 +514,7 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
       {post?.description ? (
         <ExpandableText
           text={post.description}
+          mentions={post.mentions}
           maxWords={40}
           typographySx={{
             color: theme.palette.text.primary,
@@ -1044,7 +1061,7 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
                       </Box>
                       {isEditing && comment._id ? (
                         <Box sx={{ mt: 0.65 }}>
-                          <InputBase
+                          <MentionTextField
                             fullWidth
                             multiline
                             maxRows={4}
@@ -1055,10 +1072,14 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
                               "aria-invalid": Boolean(editCommentError),
                             }}
                             value={editCommentText}
-                            onChange={e => {
-                              setEditCommentText(truncateGraphemes(e.target.value, COMMENT_MAX))
+                            truncate={next => truncateGraphemes(next, COMMENT_MAX)}
+                            onChange={next => {
+                              setEditCommentText(next)
                               if (editCommentError) setEditCommentError(undefined)
                             }}
+                            mentionedUserIds={editCommentMentionIds}
+                            onMentionedUserIdsChange={setEditCommentMentionIds}
+                            knownMentions={comment.mentions}
                             disabled={isSavingEdit}
                             sx={{
                               backgroundColor: theme.palette.background.paper,
@@ -1113,6 +1134,7 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
                       ) : (
                         <ExpandableText
                           text={comment.text}
+                          mentions={comment.mentions}
                           maxWords={30}
                           typographySx={{
                             color: theme.palette.text.primary,
@@ -1173,7 +1195,13 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
                   {showCommentEdit ? (
                     <MenuItem
                       onClick={() => {
-                        if (menuTarget?._id) startEditComment(menuTarget._id, menuTarget.text)
+                        if (menuTarget?._id) {
+                          startEditComment(
+                            menuTarget._id,
+                            menuTarget.text,
+                            (menuTarget.mentions || []).map(m => String(m.userId))
+                          )
+                        }
                       }}
                     >
                       <ListItemIcon>
@@ -1261,7 +1289,7 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
                     },
                   }}
                 >
-                  <InputBase
+                  <MentionTextField
                     fullWidth
                     multiline
                     maxRows={6}
@@ -1269,10 +1297,13 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
                     placeholder="Add a comment…"
                     inputProps={{ "aria-label": "Add a comment", "aria-invalid": Boolean(commentError) }}
                     value={commentText}
-                    onChange={e => {
-                      setCommentText(truncateGraphemes(e.target.value, COMMENT_MAX))
+                    truncate={next => truncateGraphemes(next, COMMENT_MAX)}
+                    onChange={next => {
+                      setCommentText(next)
                       if (commentError) setCommentError(undefined)
                     }}
+                    mentionedUserIds={commentMentionIds}
+                    onMentionedUserIdsChange={setCommentMentionIds}
                     disabled={isSubmittingComment}
                     sx={{
                       flex: 1,
@@ -1372,17 +1403,21 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
               },
             }}
           >
-            <InputBase
+            <MentionTextField
               fullWidth
               multiline
               minRows={3}
               maxRows={8}
               inputRef={editDescriptionInputRef}
               value={editDescription}
-              onChange={e => {
-                setEditDescription(truncateGraphemes(e.target.value, POST_DESCRIPTION_MAX))
+              truncate={next => truncateGraphemes(next, POST_DESCRIPTION_MAX)}
+              onChange={next => {
+                setEditDescription(next)
                 if (editError) setEditError(undefined)
               }}
+              mentionedUserIds={editPostMentionIds}
+              onMentionedUserIdsChange={setEditPostMentionIds}
+              knownMentions={post.mentions}
               disabled={isSavingEditPost}
               placeholder="What's on your mind?"
               aria-describedby="edit-post-char-count"

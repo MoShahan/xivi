@@ -1,12 +1,11 @@
 "use client"
 
-import React, { useEffect, useMemo, useRef } from "react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
 import { AttachFileOutlined, CloseOutlined, SendRounded } from "@mui/icons-material"
 import {
   alpha,
   Box,
   IconButton,
-  InputBase,
   Tooltip,
   Typography,
   useTheme,
@@ -18,6 +17,7 @@ import * as yup from "yup"
 
 import EmojiPickerButton, { insertEmojiAtCursor } from "@/components/EmojiPickerButton"
 import FlexBetween from "@/components/FlexBetween"
+import MentionTextField from "@/components/mentions/MentionTextField"
 import { unstyledButtonSx } from "@/components/sharedSx"
 import UserImage from "@/components/UserImage"
 import WidgetWrapper from "@/components/WidgetWrapper"
@@ -158,6 +158,7 @@ const MyPostWidget = ({ url }: MyPostWidgetProps) => {
 
   const descriptionInputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([])
   const { success, error: toastError } = useToast()
   const { enabled } = useFeatureFlags()
   const canImages = enabled("postsImages")
@@ -173,6 +174,7 @@ const MyPostWidget = ({ url }: MyPostWidgetProps) => {
       helpers.setStatus(undefined)
       const formData = new FormData()
       formData.append("description", vals.description.trim())
+      formData.append("mentionedUserIds", JSON.stringify(mentionedUserIds))
       if (vals.picture instanceof File) {
         formData.append("picture", vals.picture)
       }
@@ -180,6 +182,7 @@ const MyPostWidget = ({ url }: MyPostWidgetProps) => {
       const { data } = await api.post<{ post: Post }>("/posts", formData)
       dispatch(prependPost({ post: data.post }))
       helpers.resetForm()
+      setMentionedUserIds([])
       if (fileInputRef.current) fileInputRef.current.value = ""
       success("Post created")
     } catch (e: unknown) {
@@ -296,7 +299,7 @@ const MyPostWidget = ({ url }: MyPostWidgetProps) => {
                       },
                     }}
                   >
-                    <InputBase
+                    <MentionTextField
                       name="description"
                       placeholder="What's on your mind?"
                       inputRef={descriptionInputRef}
@@ -316,12 +319,10 @@ const MyPostWidget = ({ url }: MyPostWidgetProps) => {
                       }}
                       value={values.description ?? ""}
                       onBlur={() => void setFieldTouched("description", true)}
-                      onChange={e =>
-                        void setFieldValue(
-                          "description",
-                          truncateGraphemes(e.target.value, POST_DESCRIPTION_MAX)
-                        )
-                      }
+                      truncate={next => truncateGraphemes(next, POST_DESCRIPTION_MAX)}
+                      onChange={next => void setFieldValue("description", next)}
+                      mentionedUserIds={mentionedUserIds}
+                      onMentionedUserIdsChange={setMentionedUserIds}
                       disabled={isSubmitting}
                       onKeyDown={e => {
                         if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {

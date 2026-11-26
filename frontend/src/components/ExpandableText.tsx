@@ -2,8 +2,9 @@
 
 import React, { useState } from "react"
 import { Box, Button, Link, type SxProps, type Theme, Typography } from "@mui/material"
+import NextLink from "next/link"
 
-import { linkifyText } from "@/lib/linkify"
+import { type MentionRef, splitRichText } from "@/lib/mentions"
 
 type ExpandableTextProps = {
   text: string
@@ -11,6 +12,7 @@ type ExpandableTextProps = {
   maxWords?: number
   /** Max characters for unbroken / very long strings. Default 280. */
   maxChars?: number
+  mentions?: MentionRef[]
   typographySx?: SxProps<Theme>
   buttonSx?: SxProps<Theme>
 }
@@ -58,6 +60,7 @@ const ExpandableText = ({
   text,
   maxWords = 40,
   maxChars = 280,
+  mentions = [],
   typographySx,
   buttonSx,
 }: ExpandableTextProps) => {
@@ -67,7 +70,7 @@ const ExpandableText = ({
 
   if (!display) return null
 
-  const parts = linkifyText(display)
+  const parts = splitRichText(display, mentions)
 
   return (
     <Box>
@@ -79,24 +82,40 @@ const ExpandableText = ({
           ...((typographySx || {}) as object),
         }}
       >
-        {parts.map((part, index) =>
-          part.type === "link" ? (
-            <Link
-              key={`link-${index}`}
-              href={part.href}
-              component="a"
-              target="_blank"
-              rel="noopener noreferrer nofollow"
-              underline="hover"
-              color="primary"
-              onClick={event => event.stopPropagation()}
-            >
-              {part.value}
-            </Link>
-          ) : (
-            <React.Fragment key={`text-${index}`}>{part.value}</React.Fragment>
-          )
-        )}
+        {parts.map((part, index) => {
+          if (part.type === "mention") {
+            return (
+              <Link
+                key={`mention-${index}`}
+                component={NextLink}
+                href={`/profile/${part.userId}`}
+                underline="hover"
+                color="primary"
+                onClick={event => event.stopPropagation()}
+                sx={{ fontWeight: 600 }}
+              >
+                {part.value}
+              </Link>
+            )
+          }
+          if (part.type === "link") {
+            return (
+              <Link
+                key={`link-${index}`}
+                href={part.href}
+                component="a"
+                target="_blank"
+                rel="noopener noreferrer nofollow"
+                underline="hover"
+                color="primary"
+                onClick={event => event.stopPropagation()}
+              >
+                {part.value}
+              </Link>
+            )
+          }
+          return <React.Fragment key={`text-${index}`}>{part.value}</React.Fragment>
+        })}
       </Typography>
       {needsExpand && (
         <Button

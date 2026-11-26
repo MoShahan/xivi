@@ -1,6 +1,6 @@
 "use client"
 
-import { ChatBubble, Favorite, People, PersonAdd } from "@mui/icons-material"
+import { AlternateEmail, ChatBubble, Favorite, People, PersonAdd } from "@mui/icons-material"
 import { Badge, Box, useTheme } from "@mui/material"
 
 import { notificationTypeKind, notificationTypeLabel } from "@/lib/notifications"
@@ -34,6 +34,9 @@ const NotificationActorAvatar = ({
   if (kind === "like") {
     Icon = Favorite
     bgcolor = theme.palette.error.main
+  } else if (kind === "mention") {
+    Icon = AlternateEmail
+    bgcolor = theme.palette.info.main
   } else if (kind === "friend_request") {
     Icon = PersonAdd
   } else if (kind === "friend") {
