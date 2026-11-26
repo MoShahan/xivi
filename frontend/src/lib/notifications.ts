@@ -1,6 +1,6 @@
 import type { AppNotification, NotificationType } from "@/types/notifications"
 
-export type NotificationTypeKind = "like" | "comment" | "friend_request" | "friend"
+export type NotificationTypeKind = "like" | "comment" | "mention" | "friend_request" | "friend"
 
 export function notificationTypeKind(type: NotificationType): NotificationTypeKind {
   switch (type) {
@@ -9,6 +9,8 @@ export function notificationTypeKind(type: NotificationType): NotificationTypeKi
       return "like"
     case "comment":
       return "comment"
+    case "mention":
+      return "mention"
     case "friend_request":
       return "friend_request"
     case "friend":
@@ -25,6 +27,8 @@ export function notificationTypeLabel(type: NotificationType): string {
       return "Comment like"
     case "comment":
       return "Comment"
+    case "mention":
+      return "Mention"
     case "friend_request":
       return "Friend request"
     case "friend":
@@ -42,6 +46,8 @@ export function notificationCopy(n: AppNotification): string {
       return `${name} commented on your post`
     case "comment_like":
       return `${name} liked your comment`
+    case "mention":
+      return n.commentId ? `${name} mentioned you in a comment` : `${name} mentioned you in a post`
     case "friend":
       return `${name} added you as a friend`
     case "friend_request":

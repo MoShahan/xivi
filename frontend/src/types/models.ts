@@ -118,6 +118,16 @@ export type DiscoverUser = {
 /** Post likes are a Map on the server, serialized as an object keyed by user id. */
 export type PostLikes = Record<string, boolean>
 
+/** Stored @mention target (`@${display}` in text). */
+export type TextMention = {
+  userId: string
+  display: string
+  firstName?: string
+  lastName?: string
+  picturePath?: string
+  avatarColor?: string
+}
+
 export type PostComment = {
   _id?: string
   userId: string
@@ -127,6 +137,7 @@ export type PostComment = {
   editedAt?: string | null
   /** Comment likes keyed by user id (same shape as post likes). */
   likes?: PostLikes
+  mentions?: TextMention[]
   user?: Pick<User, "firstName" | "lastName" | "picturePath" | "avatarColor"> | null
 }
 
@@ -137,6 +148,7 @@ export type Post = {
   url?: string
   likes: PostLikes
   comments: PostComment[]
+  mentions?: TextMention[]
   createdAt?: string
   updatedAt?: string
   /** Set when description or image was edited (not on like / comment). */

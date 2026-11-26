@@ -10,6 +10,7 @@ describe("notificationTypeKind", () => {
 
   it("maps comments and friend events", () => {
     expect(notificationTypeKind("comment")).toBe("comment")
+    expect(notificationTypeKind("mention")).toBe("mention")
     expect(notificationTypeKind("friend_request")).toBe("friend_request")
     expect(notificationTypeKind("friend_accept")).toBe("friend")
     expect(notificationTypeKind("friend")).toBe("friend")
@@ -20,6 +21,7 @@ describe("notificationTypeLabel", () => {
   it("returns a short glance label for each type", () => {
     expect(notificationTypeLabel("post_like")).toBe("Post like")
     expect(notificationTypeLabel("comment")).toBe("Comment")
+    expect(notificationTypeLabel("mention")).toBe("Mention")
     expect(notificationTypeLabel("friend_request")).toBe("Friend request")
     expect(notificationTypeLabel("friend_accept")).toBe("Friend")
   })

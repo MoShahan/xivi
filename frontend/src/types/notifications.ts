@@ -2,6 +2,7 @@ export type NotificationType =
   | "post_like"
   | "comment"
   | "comment_like"
+  | "mention"
   | "friend"
   | "friend_request"
   | "friend_accept"
