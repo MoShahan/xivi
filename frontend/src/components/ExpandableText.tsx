@@ -1,7 +1,9 @@
 "use client"
 
 import React, { useState } from "react"
-import { Box, Button, type SxProps, type Theme, Typography } from "@mui/material"
+import { Box, Button, Link, type SxProps, type Theme, Typography } from "@mui/material"
+
+import { linkifyText } from "@/lib/linkify"
 
 type ExpandableTextProps = {
   text: string
@@ -65,6 +67,8 @@ const ExpandableText = ({
 
   if (!display) return null
 
+  const parts = linkifyText(display)
+
   return (
     <Box>
       <Typography
@@ -75,7 +79,24 @@ const ExpandableText = ({
           ...((typographySx || {}) as object),
         }}
       >
-        {display}
+        {parts.map((part, index) =>
+          part.type === "link" ? (
+            <Link
+              key={`link-${index}`}
+              href={part.href}
+              component="a"
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              underline="hover"
+              color="primary"
+              onClick={event => event.stopPropagation()}
+            >
+              {part.value}
+            </Link>
+          ) : (
+            <React.Fragment key={`text-${index}`}>{part.value}</React.Fragment>
+          )
+        )}
       </Typography>
       {needsExpand && (
         <Button

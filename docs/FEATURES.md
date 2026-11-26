@@ -43,6 +43,7 @@ Full feature list for the current app, plus planned items for a later release.
 - Single-post page at `/post/[postId]`
 - Share menu (copy link, X, Facebook, LinkedIn, WhatsApp)
 - Expandable post/comment text (“See more”)
+- URLs in post/comment text are auto-linked (http/https/www) and open in a new tab
 - Click a post photo to open a fullscreen lightbox (Escape, backdrop click, or close)
 
 ## Friends, follow & profiles
