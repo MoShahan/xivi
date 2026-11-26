@@ -1061,40 +1061,46 @@ const PostWidget = ({ post, onDeleted }: PostWidgetProps) => {
                       </Box>
                       {isEditing && comment._id ? (
                         <Box sx={{ mt: 0.65 }}>
-                          <MentionTextField
-                            fullWidth
-                            multiline
-                            maxRows={4}
-                            autoFocus
-                            inputRef={editCommentInputRef}
-                            inputProps={{
-                              "aria-label": "Edit comment",
-                              "aria-invalid": Boolean(editCommentError),
-                            }}
-                            value={editCommentText}
-                            truncate={next => truncateGraphemes(next, COMMENT_MAX)}
-                            onChange={next => {
-                              setEditCommentText(next)
-                              if (editCommentError) setEditCommentError(undefined)
-                            }}
-                            mentionedUserIds={editCommentMentionIds}
-                            onMentionedUserIdsChange={setEditCommentMentionIds}
-                            knownMentions={comment.mentions}
-                            disabled={isSavingEdit}
+                          <Box
                             sx={{
                               backgroundColor: theme.palette.background.paper,
                               borderRadius: 2,
-                              padding: "0.55rem 0.75rem",
-                              fontSize: "0.9rem",
                               border: editCommentError
                                 ? `1px solid ${theme.palette.error.main}`
                                 : `1px solid ${theme.palette.divider}`,
-                              "&.Mui-focused": {
+                              transition: "border-color 0.15s ease, box-shadow 0.15s ease",
+                              "&:focus-within": {
                                 borderColor: alpha(primary, 0.55),
                                 boxShadow: `0 0 0 3px ${alpha(primary, 0.12)}`,
                               },
                             }}
-                          />
+                          >
+                            <MentionTextField
+                              fullWidth
+                              multiline
+                              maxRows={4}
+                              autoFocus
+                              inputRef={editCommentInputRef}
+                              inputProps={{
+                                "aria-label": "Edit comment",
+                                "aria-invalid": Boolean(editCommentError),
+                              }}
+                              value={editCommentText}
+                              truncate={next => truncateGraphemes(next, COMMENT_MAX)}
+                              onChange={next => {
+                                setEditCommentText(next)
+                                if (editCommentError) setEditCommentError(undefined)
+                              }}
+                              mentionedUserIds={editCommentMentionIds}
+                              onMentionedUserIdsChange={setEditCommentMentionIds}
+                              knownMentions={comment.mentions}
+                              disabled={isSavingEdit}
+                              sx={{
+                                padding: "0.55rem 0.75rem",
+                                fontSize: "0.9rem",
+                              }}
+                            />
+                          </Box>
                           {editCommentError && (
                             <Typography sx={{ color: "error.main", mt: 0.35, fontSize: "0.75rem" }} role="alert">
                               {editCommentError}
