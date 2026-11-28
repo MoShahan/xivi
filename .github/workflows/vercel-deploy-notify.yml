@@ -32,10 +32,14 @@ jobs:
     # Preview builds emit `ready`. Production auto-promotes emit `success`.
     # Skip production `ready` so the later success/fail event is the only ping.
     if: >
-      github.event.action != 'vercel.deployment.ready' ||
+      github.event.client_payload.error != 'deployment_deleted' &&
+      github.event.client_payload.state.detail != 'deployment_deleted' &&
       (
-        github.event.client_payload.environment != 'production' &&
-        github.event.client_payload.environment != 'Production'
+        github.event.action != 'vercel.deployment.ready' ||
+        (
+          github.event.client_payload.environment != 'production' &&
+          github.event.client_payload.environment != 'Production'
+        )
       )
     runs-on: ubuntu-latest
     timeout-minutes: 5
